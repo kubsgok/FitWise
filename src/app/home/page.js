@@ -2,9 +2,12 @@
 
 import {Dumbbell, Timer, ChartBarDecreasing} from 'lucide-react';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import NavBar from '../components/NavBar';
 
 export default function HomePage() {
+  const router = useRouter();
+
   useEffect(() => {
     const observerOptions = {
       threshold: 0.1,
@@ -39,7 +42,11 @@ export default function HomePage() {
           Experience personalized workouts powered by artificial intelligence. Get real-time form corrections, curated training plans, and achieve your fitness goals faster than ever.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105" style={{background: 'linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%)'}}>
+          <button 
+            onClick={() => router.push('/workout')}
+            className="text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105" 
+            style={{background: 'linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%)'}}
+          >
             Begin Your Workout
           </button>
           <button 
