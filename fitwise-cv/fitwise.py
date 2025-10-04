@@ -70,8 +70,15 @@ def run_pose_detection(queue: Queue):
                     "landmarks": landmarks
                 }
                 queue.put(json.dumps(data))
-
                 
+                #do reps
+                from calculations import check_back_posture, check_arm_posture, num_reps
+                #check_back_posture(pose_result.pose_landmarks[0], w, h)
+                #check_arm_posture(pose_result.pose_landmarks[0], w, h)
+                rep_count = num_reps(pose_result.pose_landmarks[0], w, h)
+                cv2.putText(frame, f'Reps: {rep_count}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+
 
             cv2.imshow("FitWise Pose Tracking", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
