@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Camera, Play, Pause, RotateCcw, Target, Timer, TrendingUp } from 'lucide-react';
+import { Camera, Play, Pause, RotateCcw, Target, Timer, TrendingUp, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import NavBar from '../components/NavBar';
 
 export default function TrainingPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentRep, setCurrentRep] = useState(0);
@@ -15,15 +17,55 @@ export default function TrainingPage() {
   const [cameraActive, setCameraActive] = useState(false);
   const [currentWorkout, setCurrentWorkout] = useState(null);
   const [mediaStream, setMediaStream] = useState(null);
+  const [liveFeedback, setLiveFeedback] = useState("Position yourself in front of the camera to begin");
 
   // Workout data based on URL params
   const workouts = {
-    1: { title: "Squats", target: 15, duration: 300, description: "Keep your back straight and lower down slowly" },
-    2: { title: "Push-ups", target: 12, duration: 300, description: "Keep your body in a straight line from head to heels" },
-    3: { title: "Bicep Curls", target: 12, duration: 300, description: "Control the weight on both up and down movements" },
-    4: { title: "Shoulder Press", target: 10, duration: 300, description: "Press straight up and lower with control" },
-    5: { title: "Plank", target: 1, duration: 180, description: "Hold position and keep your core tight" },
-    6: { title: "Sit-ups", target: 15, duration: 300, description: "Focus on using your core, not your neck" }
+    // Arms
+    1: { title: "Bicep Curls", target: 12, duration: 300, description: "Control the weight on both up and down movements" },
+    2: { title: "Tricep Dips", target: 10, duration: 300, description: "Keep your body straight and control the movement" },
+    7: { title: "Hammer Curls", target: 12, duration: 240, description: "Use neutral grip and control the weight" },
+    8: { title: "Overhead Press", target: 10, duration: 360, description: "Press straight up and lower with control" },
+    
+    // Legs
+    3: { title: "Squats", target: 15, duration: 300, description: "Keep your back straight and lower down slowly" },
+    4: { title: "Lunges", target: 12, duration: 300, description: "Step forward and keep your balance" },
+    9: { title: "Calf Raises", target: 20, duration: 180, description: "Rise up on your toes and control the descent" },
+    10: { title: "Wall Sits", target: 3, duration: 240, description: "Hold position with your back against the wall" },
+    
+    // Core
+    5: { title: "Plank", target: 3, duration: 180, description: "Hold position and keep your core tight" },
+    6: { title: "Sit-ups", target: 15, duration: 300, description: "Focus on using your core, not your neck" },
+    11: { title: "Russian Twists", target: 20, duration: 240, description: "Rotate your torso while keeping your core engaged" },
+    12: { title: "Mountain Climbers", target: 20, duration: 180, description: "Keep your core tight and maintain steady pace" },
+    
+    // Chest
+    13: { title: "Push-ups", target: 12, duration: 300, description: "Keep your body in a straight line from head to heels" },
+    14: { title: "Chest Press", target: 10, duration: 360, description: "Control the weight both up and down" },
+    15: { title: "Chest Flys", target: 12, duration: 240, description: "Use controlled movements and feel the stretch" },
+    
+    // Back
+    16: { title: "Pull-ups", target: 8, duration: 360, description: "Pull yourself up using your back muscles" },
+    17: { title: "Rows", target: 12, duration: 300, description: "Pull the weight towards your torso" },
+    18: { title: "Reverse Flys", target: 15, duration: 240, description: "Squeeze your shoulder blades together" },
+    
+    // Shoulders
+    19: { title: "Lateral Raises", target: 12, duration: 240, description: "Lift weights to the side with control" },
+    20: { title: "Front Raises", target: 12, duration: 240, description: "Lift weights to the front with straight arms" },
+    21: { title: "Shoulder Shrugs", target: 15, duration: 180, description: "Lift your shoulders up and squeeze" },
+    
+    // Cardio
+    22: { title: "Jumping Jacks", target: 30, duration: 180, description: "Jump with energy and maintain rhythm" },
+    23: { title: "Burpees", target: 10, duration: 240, description: "Complete movement from squat to jump" },
+    24: { title: "High Knees", target: 30, duration: 180, description: "Lift your knees high and pump your arms" },
+    
+    // Stretching
+    25: { title: "Forward Fold", target: 1, duration: 120, description: "Stretch forward slowly and hold the position" },
+    26: { title: "Shoulder Rolls", target: 10, duration: 120, description: "Roll your shoulders in smooth circles" },
+    27: { title: "Hip Circles", target: 10, duration: 180, description: "Move your hips in controlled circular motions" },
+    28: { title: "Cat-Cow Stretch", target: 10, duration: 180, description: "Alternate between arching and rounding your back" },
+    29: { title: "Quad Stretch", target: 2, duration: 120, description: "Hold your foot behind you and feel the stretch" },
+    30: { title: "Child's Pose", target: 1, duration: 180, description: "Relax in this restorative position" },
   };
 
   useEffect(() => {
@@ -53,13 +95,28 @@ export default function TrainingPage() {
       interval = setInterval(() => {
         setElapsedTime((prev) => prev + 1);
         setAccuracy((prev) => Math.min(100, prev + Math.random() * 5 - 2));
+        
+        // Generate live feedback based on accuracy
+        const currentAcc = accuracy;
+        if (currentAcc >= 90) {
+          setLiveFeedback("Excellent form! Keep it up!");
+        } else if (currentAcc >= 75) {
+          setLiveFeedback("Good form. Try to maintain control throughout the movement.");
+        } else if (currentAcc >= 60) {
+          setLiveFeedback("Focus on your posture. Keep your back straight.");
+        } else {
+          setLiveFeedback("Slow down and focus on proper form over speed.");
+        }
+        
         if (Math.random() > 0.95 && currentWorkout) {
           setCurrentRep((prev) => Math.min(currentWorkout.target, prev + 1));
         }
       }, 1000);
+    } else {
+      setLiveFeedback("Ready to start your workout");
     }
     return () => clearInterval(interval);
-  }, [isPlaying, currentWorkout]);
+  }, [isPlaying, currentWorkout, accuracy]);
 
   const startCamera = async () => {
     try {
@@ -181,12 +238,6 @@ export default function TrainingPage() {
                     <RotateCcw className="w-6 h-6" />
                   </button>
                 </div>
-
-                <div className="bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2">
-                  <span className={`text-sm font-semibold ${getAccuracyColor(accuracy)}`}>
-                    Form: {Math.round(accuracy)}%
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -194,10 +245,27 @@ export default function TrainingPage() {
           {/* Workout Panel - Right Side */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl p-6 h-full shadow-xl border border-gray-100">
+              {/* Back Button */}
+              <div className="mb-4">
+                <button
+                  onClick={() => router.push('/workout')}
+                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg font-medium transition-all text-sm w-full justify-center"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Exercises
+                </button>
+              </div>
+
               {/* Workout Header */}
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">{currentWorkout.title}</h2>
                 <p className="text-gray-600 text-sm">{currentWorkout.description}</p>
+              </div>
+
+              {/* Live Feedback */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <h3 className="text-sm font-semibold text-blue-900 mb-2">Live Feedback</h3>
+                <p className="text-sm text-blue-800 leading-relaxed">{liveFeedback}</p>
               </div>
 
               {/* Stats Grid */}
