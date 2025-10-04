@@ -2,6 +2,7 @@
 
 import {Dumbbell, Timer, ChartBarDecreasing} from 'lucide-react';
 import { useEffect } from 'react';
+import NavBar from '../components/NavBar';
 
 export default function HomePage() {
   useEffect(() => {
@@ -25,42 +26,34 @@ export default function HomePage() {
   }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200/60">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-center">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg"></div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                FitWise
-              </h1>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <NavBar />
 
       <section className="container mx-auto px-6 py-20">
   <div className="max-w-6xl mx-auto">
     <div className="grid lg:grid-cols-1 gap-12 items-center">
       <div className="text-center animate-fade-in-up">
         <h1 className="text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
-          Your <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">AI Fitness</span> Coach Awaits
+          Your <span className="text-transparent" style={{background: 'linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text'}}>AI Fitness</span> Coach Awaits
         </h1>
-        <p className="text-xl text-slate-600 mb-8 max-w-lg mx-auto">
+        <p className="text-xl text-slate-600 mb-8 ">
           Experience personalized workouts powered by artificial intelligence. Get real-time form corrections, curated training plans, and achieve your fitness goals faster than ever.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105">
+          <button className="text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105" style={{background: 'linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%)'}}>
             Begin Your Workout
           </button>
-          <button className="bg-white text-slate-700 border-2 border-slate-300 px-8 py-4 rounded-xl font-semibold text-lg hover:border-blue-500 hover:text-blue-600 hover:shadow-lg transition-all transform hover:scale-105">
+          <button 
+            className="bg-white text-slate-700 border-2 border-slate-300 px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all transform hover:scale-105" 
+            onMouseEnter={(e) => {e.target.style.borderColor = '#FF6B35'; e.target.style.color = '#FF6B35'}} 
+            onMouseLeave={(e) => {e.target.style.borderColor = ''; e.target.style.color = ''}}
+          >
             Watch Demo
           </button>
         </div>
       </div>
 
       <div className="relative max-w-2xl mx-auto w-full animate-fade-in-up animation-delay-300">
-        <div className="bg-gradient-to-br from-blue-400 to-purple-600 rounded-3xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105">
+        <div className="bg-gradient-to-br from-gray-700 to-gray-500 rounded-3xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105">
           <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 text-white">
             <div className="flex items-center justify-between mb-4 animate-slide-in-left">
               <h3 className="text-lg font-semibold">Today's Workout</h3>
@@ -118,8 +111,8 @@ export default function HomePage() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 animate-on-scroll">
-              <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 animate-slide-up animation-delay-100 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 hover:shadow-xl transition-all transform hover:scale-110 hover:rotate-3">
+              <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 animate-slide-up animation-delay-100 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                <div className="w-16 h-16 bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl flex items-center justify-center mx-auto mb-6 hover:shadow-xl transition-all transform hover:scale-110 hover:rotate-3">
                   <Dumbbell className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-4">Curated Workout Library</h3>
@@ -128,8 +121,8 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-100 animate-slide-up animation-delay-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 hover:shadow-xl transition-all transform hover:scale-110 hover:rotate-3">
+              <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-red-50 to-red-100 border border-red-200 animate-slide-up animation-delay-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-700 rounded-2xl flex items-center justify-center mx-auto mb-6 hover:shadow-xl transition-all transform hover:scale-110 hover:rotate-3">
                   <Timer className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-4">Real-time Form Analysis</h3>
@@ -138,8 +131,8 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 animate-slide-up animation-delay-300 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-6 hover:shadow-xl transition-all transform hover:scale-110 hover:rotate-3">
+              <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 animate-slide-up animation-delay-300 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                <div className="w-16 h-16 bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl flex items-center justify-center mx-auto mb-6 hover:shadow-xl transition-all transform hover:scale-110 hover:rotate-3">
                   <ChartBarDecreasing className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-4">Session Summary</h3>
@@ -159,7 +152,7 @@ export default function HomePage() {
         <div className="container mx-auto px-6">
           <div className="max-w-6xl mx-auto text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg"></div>
+              <div className="w-8 h-8 rounded-lg" style={{background: 'linear-gradient(135deg, #FF8C00 0%, #FF6B35 100%)'}}></div>
               <h3 className="text-2xl font-bold text-white">FitWise</h3>
             </div>
             <p className="text-slate-400 mb-4 mx-auto">
