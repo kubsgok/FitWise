@@ -6,3 +6,5 @@ numpy==1.26.4
 
 # Optional ML layer (only if you need TF)
 tensorflow==2.16.1
+
+flask_socketio==5.3.1
