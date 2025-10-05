@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "15.5.4",
+    "@google/generative-ai": "^0.24.1",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
     "react": "19.1.0",
