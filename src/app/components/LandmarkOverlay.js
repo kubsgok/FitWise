@@ -6,7 +6,21 @@ export default function LandmarkOverlay({ workoutId, videoRef }) {
   const landmarksRef = useRef([]);
   const startTimeRef = useRef(null);
 
-  // Load the landmark JSON when workoutId changes
+  // --- Mediapipe-like landmark connections (simplified) ---
+  const connections = [
+    // Upper body
+    [11, 13], [13, 15], // Left arm
+    [12, 14], [14, 16], // Right arm
+    [11, 12], // Shoulders
+    // Torso
+    [11, 23], [12, 24],
+    [23, 24], // Hips
+    // Legs
+    [23, 25], [25, 27], // Left leg
+    [24, 26], [26, 28], // Right leg
+  ];
+
+  // Load landmark JSON when workout changes
   useEffect(() => {
     if (!workoutId) return;
 
@@ -24,13 +38,10 @@ export default function LandmarkOverlay({ workoutId, videoRef }) {
     };
 
     fetchData();
-
-    return () => {
-      cancelAnimationFrame(animationRef.current);
-    };
+    return () => cancelAnimationFrame(animationRef.current);
   }, [workoutId]);
 
-  // Draw each frame
+  // Draw loop
   const animate = () => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
@@ -54,28 +65,66 @@ export default function LandmarkOverlay({ workoutId, videoRef }) {
       return;
     }
 
-    // Loop animation every 5 seconds
+    // Smooth looping animation
     const totalDuration = 5;
     const progress = (elapsed % totalDuration) / totalDuration;
     const frameIndex = Math.floor(progress * data.length);
     const frame = data[frameIndex];
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (frame?.landmarks) {
-      frame.landmarks.forEach((pt) => {
-        // 🟢 Only draw left-side joints for push-ups
-        if (workoutId === '13') {
-          const leftSideIds = [11, 13, 15, 23, 25, 27]; // left shoulder, elbow, wrist, hip, knee, ankle
-          if (!leftSideIds.includes(pt.id)) return;
-        }
+      const landmarks = frame.landmarks;
+      const visibleLandmarks = [];
 
-        const x = pt.x * canvas.width;
-        const y = pt.y * canvas.height;
+      // 🟢 For push-ups, only draw the left-side joints
+      const leftSideIds = [11, 13, 15, 23, 25, 27];
+      for (const pt of landmarks) {
+        if (workoutId === "13" && !leftSideIds.includes(pt.id)) continue;
+        visibleLandmarks.push(pt);
+      }
+
+      // --- Draw skeleton connections with glowing blue gradient ---
+      ctx.lineWidth = 4;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = "rgba(0, 200, 255, 0.8)"; // 💙 bluish glow
+
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, "rgba(0, 255, 255, 0.9)"); // cyan
+      gradient.addColorStop(0.5, "rgba(0, 180, 255, 0.9)"); // aqua blue
+      gradient.addColorStop(1, "rgba(0, 120, 255, 0.9)"); // deeper blue
+      ctx.strokeStyle = gradient;
+
+      connections.forEach(([start, end]) => {
+        const p1 = visibleLandmarks.find((p) => p.id === start);
+        const p2 = visibleLandmarks.find((p) => p.id === end);
+        if (!p1 || !p2) return;
+
+        const x1 = p1.x * canvas.width;
+        const y1 = p1.y * canvas.height;
+        const x2 = p2.x * canvas.width;
+        const y2 = p2.y * canvas.height;
 
         ctx.beginPath();
-        ctx.arc(x, y, 5, 0, 2 * Math.PI);
-        ctx.fillStyle = "rgba(0, 183, 255, 0.7)";
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      });
+
+      // --- Draw glowing joint circles ---
+      visibleLandmarks.forEach((pt) => {
+        const x = pt.x * canvas.width;
+        const y = pt.y * canvas.height;
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = "rgba(0, 187, 255, 0.95)"; // bright aqua
+        ctx.fill();
+
+        // Inner white highlight
+        ctx.beginPath();
+        ctx.arc(x, y, 2.5, 0, 2 * Math.PI);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
         ctx.fill();
       });
     }
