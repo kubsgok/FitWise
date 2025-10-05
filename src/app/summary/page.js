@@ -2,14 +2,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getWorkoutSessions, deleteSession, clearAllSessions } from '../../utilities/workoutStorage';
-import { ArrowLeft, Trash2, TrendingUp, Target, Clock, Award, X } from 'lucide-react';
+import { ArrowLeft, Trash2, TrendingUp, Target, Clock, Award, X, MessageSquare } from 'lucide-react';
 import NavBar from '../components/NavBar';
 
 export default function SummaryPage() {
   const [sessions, setSessions] = useState([]);
   const [showClearModal, setShowClearModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [selectedSession, setSelectedSession] = useState(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -79,10 +81,136 @@ export default function SummaryPage() {
     return formatDuration(total);
   };
 
+  const handleFeedback = (session) => {
+    setSelectedSession(session);
+    setShowFeedbackModal(true);
+  };
+
+  const getFeedbackMessage = (session) => {
+    const accuracy = session.accuracy || 0;
+    const completionRate = session.targetReps > 0 ? (session.completedReps / session.targetReps) * 100 : 0;
+    
+    let feedback = [];
+    
+    // Accuracy feedback
+    if (accuracy >= 90) {
+      feedback.push("🎯 Excellent form! Your accuracy is outstanding.");
+    } else if (accuracy >= 75) {
+      feedback.push("👍 Good form! Keep maintaining this consistency.");
+    } else if (accuracy >= 60) {
+      feedback.push("📈 Room for improvement. Focus on proper form over speed.");
+    } else {
+      feedback.push("💪 Take your time and focus on technique. Quality over quantity!");
+    }
+    
+    // Completion feedback
+    if (completionRate >= 100) {
+      feedback.push("✅ Workout completed! Great dedication.");
+    } else if (completionRate >= 80) {
+      feedback.push("👏 Nearly there! You completed most of your workout.");
+    } else if (completionRate >= 50) {
+      feedback.push("🔥 Good effort! Try to complete more reps next time.");
+    } else {
+      feedback.push("💯 Every rep counts! Keep building your endurance.");
+    }
+    
+    // Duration feedback
+    const avgTimePerRep = session.duration / (session.completedReps || 1);
+    if (avgTimePerRep < 2) {
+      feedback.push("⚡ Fast-paced workout! Make sure you're maintaining proper form.");
+    } else if (avgTimePerRep > 5) {
+      feedback.push("🧘 Steady pace! Taking time for proper form is important.");
+    }
+    
+    return feedback;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <NavBar />
       
+      {/* Feedback Modal */}
+      {showFeedbackModal && selectedSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowFeedbackModal(false)}
+          />
+          
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-scaleIn max-h-[80vh] overflow-y-auto">
+            <button
+              onClick={() => setShowFeedbackModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="mb-6">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <MessageSquare className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Workout Feedback</h3>
+              <p className="text-gray-600 font-medium">{selectedSession.workoutTitle}</p>
+              <p className="text-sm text-gray-500">{formatDate(selectedSession.timestamp)}</p>
+            </div>
+            
+            {/* Workout Summary */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Reps:</span>
+                  <span className="ml-2 font-semibold">{selectedSession.completedReps}/{selectedSession.targetReps}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Accuracy:</span>
+                  <span className="ml-2 font-semibold text-green-600">{selectedSession.accuracy || 0}%</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Duration:</span>
+                  <span className="ml-2 font-semibold">{formatDuration(selectedSession.duration)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Status:</span>
+                  <span className={`ml-2 font-semibold ${selectedSession.completed ? 'text-green-600' : 'text-yellow-600'}`}>
+                    {selectedSession.completed ? 'Completed' : 'Incomplete'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Feedback Messages */}
+            <div className="space-y-3 mb-6">
+              <h4 className="font-semibold text-gray-900">Personalized Feedback:</h4>
+              {getFeedbackMessage(selectedSession).map((message, index) => (
+                <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                  <div className="text-blue-600 text-sm leading-relaxed">{message}</div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Tips Section */}
+            <div className="border-t pt-4">
+              <h4 className="font-semibold text-gray-900 mb-3">Tips for Next Time:</h4>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>• Focus on consistent form throughout the workout</li>
+                <li>• Take breaks when needed to maintain accuracy</li>
+                <li>• Gradually increase reps as you build strength</li>
+                <li>• Stay hydrated and maintain proper posture</li>
+              </ul>
+            </div>
+            
+            <button
+              onClick={() => setShowFeedbackModal(false)}
+              className="w-full mt-6 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Delete Session Confirmation Modal */}
       {showDeleteModal && sessionToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
@@ -251,14 +379,23 @@ export default function SummaryPage() {
                     <h3 className="text-xl font-bold text-gray-900">{session.workoutTitle}</h3>
                     <p className="text-sm text-gray-500">{formatDate(session.timestamp)}</p>
                   </div>
-                  {!fromEndWorkout && (
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => handleDelete(session)}
-                      className="text-red-500 hover:text-red-700 p-2"
+                      onClick={() => handleFeedback(session)}
+                      className="flex items-center gap-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium transition"
                     >
-                      <Trash2 className="w-5 h-5" />
+                      <MessageSquare className="w-4 h-4" />
+                      Feedback
                     </button>
-                  )}
+                    {!fromEndWorkout && (
+                      <button
+                        onClick={() => handleDelete(session)}
+                        className="text-red-500 hover:text-red-700 p-2"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
