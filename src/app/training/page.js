@@ -675,105 +675,87 @@ export default function TrainingPage() {
   };
 
   // **NEW: Provide contextual live feedback**
-  const provideLiveFeedback = async (feedbackType, reps, currentAccuracy, formMessage) => {
-    let feedbackPrompt = '';
-    
-    // Get recent feedback for context
-    const recentMessages = recentFeedbackMessages.slice(-3).map(msg => msg.content).join('; ');
-    const avoidRepetition = recentMessages ? `Avoid repeating these recent messages: "${recentMessages}". ` : '';
-    
-    switch (feedbackType) {
-      case 'form_correction': {
-        // Find which form issue occurs most often
-        const sortedIssues = Object.entries(formMessageFrequency)
-          .sort((a, b) => b[1] - a[1]);
-        const topIssue = sortedIssues.length > 0 ? sortedIssues[0][0] : null;
+  const provideLiveFeedback = async (formMessage, currentWorkout, reps, accuracy) => {
+  // 🔸 Throttle feedback — every 10–15 seconds
+  const now = Date.now();
+  const minDelay = 10000; // 10 s
+  const maxDelay = 15000; // 15 s
+  const nextDelay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
 
-        feedbackPrompt = topIssue
-          ? `The user keeps getting the same form issue during ${currentWorkout?.title}: "${topIssue}". Give one short, natural correction focusing mainly on that repeated mistake.`
-          : `Give a brief, natural form correction for ${currentWorkout?.title}. Say it like a real trainer would - one conversational sentence only.`;
-        break;
-      }
+  if (window._nextFeedbackTime && now < window._nextFeedbackTime) return;
+  window._nextFeedbackTime = now + nextDelay;
 
-        
-      case 'halfway_encouragement':
-        feedbackPrompt = `The user is halfway through their ${currentWorkout?.title} workout. Give one natural sentence of encouragement like a real trainer would.`;
-        break;
-        
-      case 'milestone_celebration':
-        feedbackPrompt = `The user hit ${reps} out of ${currentWorkout?.target} reps for ${currentWorkout?.title}. Give one natural sentence of celebration.`;
-        break;
-        
-      case 'workout_complete':
-        feedbackPrompt = `The user just completed all ${currentWorkout?.target} reps of ${currentWorkout?.title}! Give one enthusiastic congratulatory sentence celebrating their achievement. Be excited and proud of them finishing the workout.`;
-        break;
-        
-      case 'positive_reinforcement':
-        feedbackPrompt = `The user is doing great with ${currentWorkout?.title}. Give one natural sentence of positive reinforcement.`;
-        break;
-        
-      case 'time_encouragement':
-        feedbackPrompt = `The user has been working out for 90 seconds. Give one sentence of time-based encouragement.`;
-        break;
-    }
+  // Skip if there’s no meaningful form message
+  if (!formMessage || formMessage.trim().length < 2) return;
 
-    if (feedbackPrompt) {
-      try {
-        setIsAIProcessing(true);
-        
-        const systemPrompt = `You are Coach Mike, a motivational male fitness trainer. Give exactly ONE brief sentence of natural encouragement. Do NOT use any formatting like asterisks, bullets, or multiple phrases. Do NOT include words like "Workout Commences" or stage directions. Just give one natural, conversational sentence like a real trainer would say. Examples: "Nice form on that rep!" or "Keep that energy up!" or "You're crushing it!" Be natural and conversational, not scripted.`;
-        
-        const response = await fetch('/api/gemini', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: feedbackPrompt,
-            systemPrompt: systemPrompt,
-            model: "gemini-2.0-flash-exp",
-            options: {
-              temperature: 0.9, // Higher temperature for more variation
-              maxOutputTokens: 50,
-            }
-          }),
-        });
+  try {
+    setIsAIProcessing(true);
 
-        if (response.ok) {
-          const aiResult = await response.json();
-          
-          // Track this message to avoid repetition
-          const newMessage = {
-            type: feedbackType,
-            content: aiResult.response,
-            timestamp: Date.now()
-          };
-          
-          setRecentFeedbackMessages(prev => {
-            const updated = [...prev, newMessage];
-            // Keep only last 10 messages
-            return updated.slice(-10);
-          });
-          
-          // Add to speech history with live feedback indicator
-          setSpeechHistory((prev) => [
-            ...prev,
-            {
-              text: `🔴 Live: ${aiResult.response}`,
-              timestamp: new Date(),
-              isAI: true,
-              isLive: true,
-            },
-          ]);
+    // --- Prompt with all context ---
+    const prompt = `
+The user is doing ${currentWorkout?.title}.
+Current stats:
+• Reps done: ${reps} / ${currentWorkout?.target}
+• Accuracy: ${Math.round(accuracy)}%
+• Recent correction: "${formMessage}". If this pertains to back correction, mention to fix back posture.
 
-          // Speak the feedback
-          await speakText(aiResult.response);
-        }
-      } catch (error) {
-        console.error("Live feedback error:", error);
-      } finally {
-        setIsAIProcessing(false);
-      }
-    }
-  };
+Give ONE short, natural coaching line as if said in real time.
+Focus mainly on the form correction above, but make it sound human and motivating.
+Avoid repetition or robotic phrasing.
+
+Examples:
+- "Nice pace—keep that back straight!"
+- "You're halfway there, drop a little lower this time."
+- "Strong form! Keep your hips aligned."
+One concise sentence only.
+    `.trim();
+
+    const systemPrompt = `
+You are Coach Mike, a supportive and energetic personal trainer.
+Speak in a casual, natural tone (like during a workout).
+No emojis, quotes, or formatting. Just one clear, real-time coaching line.
+    `.trim();
+
+    // --- Ask Gemini ---
+    const response = await fetch("/api/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
+        systemPrompt,
+        model: "gemini-2.0-flash-exp",
+        options: {
+          temperature: 0.9,
+          maxOutputTokens: 50,
+        },
+      }),
+    });
+
+    if (!response.ok) throw new Error("AI feedback request failed");
+    const aiResult = await response.json();
+
+    const message = aiResult.response?.trim() || formMessage;
+
+    // --- Display + speak it ---
+    // setLiveFeedback(message);
+    setSpeechHistory((prev) => [
+      ...prev,
+      {
+        text: `🔴 Live: ${message}`,
+        timestamp: new Date(),
+        isAI: true,
+        isLive: true,
+      },
+    ]);
+
+    await speakText(message);
+  } catch (err) {
+    console.error("Live feedback error:", err);
+  } finally {
+    setIsAIProcessing(false);
+  }
+};
+
 
   // **NEW: Function to convert text to speech**
   const speakText = async (text) => {
