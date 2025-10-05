@@ -46,7 +46,7 @@ export default function LandmarkOverlay({ workoutId, videoRef }) {
     canvas.width = videoWidth;
     canvas.height = videoHeight;
 
-    const elapsed = (performance.now() - startTimeRef.current) / 800; // seconds
+    const elapsed = (performance.now() - startTimeRef.current) / 800;
     const data = landmarksRef.current;
 
     if (!data || data.length === 0) {
@@ -63,8 +63,13 @@ export default function LandmarkOverlay({ workoutId, videoRef }) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (frame?.landmarks) {
-      frame.landmarks.forEach(pt => {
-        // if positive times 5/4 or -5/4 if negative pt.x
+      frame.landmarks.forEach((pt) => {
+        // 🟢 Only draw left-side joints for push-ups
+        if (workoutId === '13') {
+          const leftSideIds = [11, 13, 15, 23, 25, 27]; // left shoulder, elbow, wrist, hip, knee, ankle
+          if (!leftSideIds.includes(pt.id)) return;
+        }
+
         const x = pt.x * canvas.width;
         const y = pt.y * canvas.height;
 

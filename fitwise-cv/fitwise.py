@@ -97,10 +97,10 @@ def run_pose_detection(shared_data):
                 # if record_start is None:
                 #     record_start = time.time()
                 # elif time.time() - record_start <= 3:
-                #     recorded_data.append(data_entry)x
+                #     recorded_data.append(data_entry)
                 # elif len(recorded_data) > 0:
                 #     # Save to file once 5 seconds pass
-                #     with open("3.json", "w") as f:
+                #     with open("13.json", "w") as f:
                 #         json.dump(recorded_data, f, indent=2)
                 #     print("\n💾 Saved first 5 seconds of landmarks to 13.json")
                 #     recorded_data.clear()  # prevent saving repeatedly
