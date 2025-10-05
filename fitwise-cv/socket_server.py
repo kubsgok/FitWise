@@ -24,5 +24,5 @@ def send_landmark(landmark_data):
     socketio.emit("landmark", landmark_data)
 
 def start_server():
-    print("🌐 Flask-SocketIO server running at http://localhost:6432")
-    socketio.run(app, host="0.0.0.0", port=6432)
+    print("🌐 Flask-SocketI0 server running at http://localhost:6432")
+    socketio.run(app, host="0.0.0.0", port=6432, allow_unsafe_werkzeug=True)
