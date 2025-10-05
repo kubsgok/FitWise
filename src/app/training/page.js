@@ -12,12 +12,13 @@ import {
   TrendingUp,
   ArrowLeft,
   Mic,
-  MicOff,
+  MicOff, Save,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NavBar from "../components/NavBar";
 import { getSocket } from "../socket";
 import LandmarkOverlay from "../components/LandmarkOverlay";
+import { saveWorkoutSession } from '../../utilities/workoutStorage';
 
 /** 4) Feature-detect the best audio MIME type for this browser */
 function pickAudioMime() {
@@ -74,6 +75,9 @@ export default function TrainingPage() {
   const [hasGivenEncouragement, setHasGivenEncouragement] = useState(false);
   const [hasGivenFormCorrection, setHasGivenFormCorrection] = useState(false);
   const feedbackCooldown = useRef(0); // Prevents too frequent feedback
+  // NEW: Workout tracking state for storage
+  const [maxAccuracyReached, setMaxAccuracyReached] = useState(0);
+  const [totalRepsCompleted, setTotalRepsCompleted] = useState(0);
 
   // Workout data based on URL params
   const workouts = {
@@ -321,6 +325,34 @@ export default function TrainingPage() {
       }
     }, 1000);
 
+  // cleanup on unmount or page change
+  return () => {
+    console.log("🧹 Cleaning up socket + interval");
+    clearInterval(intervalId);
+    socket.off("landmark", handleLandmark);
+    socket.disconnect(); // or comment this out if you want to persist connection
+  };
+}, [searchParams, cameraActive]);
+
+      let message = parsedData.message;
+      if (message && message.length > 0) {
+        setLiveFeedback(message);
+      }
+
+      // **NEW: Trigger intelligent live feedback**
+      checkForLiveFeedback(newReps, accuracyScore, message);
+
+      // console.log("💡 Feedback message:", message);
+    };
+    socket.on("landmark", handleLandmark);
+
+    // interval to emit every second
+    const intervalId = setInterval(() => {
+      if (socket.connected) {
+        socket.emit("landmark", workoutId);
+      }
+    }, 1000);
+
     // cleanup on unmount or page change
     return () => {
       console.log("🧹 Cleaning up socket + interval");
@@ -394,12 +426,38 @@ export default function TrainingPage() {
 
     // Reset live feedback tracking
     setWorkoutStartTime(null);
-    setLastFeedbackTime(0);
-    setLastRepCount(0);
-    setLastAccuracy(0);
-    setHasGivenEncouragement(false);
-    setHasGivenFormCorrection(false);
-    feedbackCooldown.current = 0;
+    setMaxAccuracyReached(0);
+    setTotalRepsCompleted(0);
+  };
+
+  // NEW: Save and end workout function
+  const saveAndEndWorkout = () => {
+    if (!currentWorkout) return;
+
+    const data = {
+      workoutTitle: currentWorkout.title,
+      workoutId: searchParams.get('workout'),
+      category: currentWorkout.category || 'General',
+      completedReps: totalRepsCompleted,
+      targetReps: currentWorkout.target,
+      averageAccuracy: Math.round(accuracy),
+      maxAccuracy: Math.round(maxAccuracyReached),
+      duration: elapsedTime,
+      targetDuration: currentWorkout.duration,
+      completed: totalRepsCompleted >= currentWorkout.target,
+      startTime: workoutStartTime,
+      endTime: new Date(),
+      percentComplete: Math.round((totalRepsCompleted / currentWorkout.target) * 100)
+    };
+
+    const savedSession = saveWorkoutSession(data);
+    
+    if (savedSession) {
+      alert(`Workout saved! Completed ${totalRepsCompleted}/${currentWorkout.target} reps with ${Math.round(accuracy)}% accuracy.`);
+      router.push('/summary');
+    } else {
+      alert('Failed to save workout. Please try again.');
+    }
   };
 
   const formatTime = (seconds) => {
@@ -974,13 +1032,13 @@ export default function TrainingPage() {
                     )}
                     {isAIProcessing && (
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="animate-pulse text-blue-400">🤖</div>
+                        <div className="animate-pulse text-blue-400">AI</div>
                         <span className="text-sm">AI is thinking...</span>
                       </div>
                     )}
                     {isSpeaking && (
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="animate-bounce text-green-400">🔊</div>
+                        <div className="animate-bounce text-green-400">SPEAKING</div>
                         <span className="text-sm">AI is speaking...</span>
                       </div>
                     )}
@@ -998,14 +1056,21 @@ export default function TrainingPage() {
           {/* Workout Panel - Right Side */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl p-6 h-full shadow-xl border border-gray-100 overflow-y-auto">
-              {/* Back Button */}
-              <div className="mb-4">
+              {/* Back Button - MODIFIED */}
+              <div className="mb-4 flex gap-2">
                 <button
                   onClick={() => router.push("/workout")}
                   className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg font-medium transition-all text-sm w-full justify-center"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back to Exercises
+                  Back
+                </button>
+                <button
+                  onClick={saveAndEndWorkout}
+                  className="flex-1 flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-medium transition-all text-sm justify-center"
+                >
+                  <Save className="w-4 h-4" />
+                  Save
                 </button>
               </div>
 
