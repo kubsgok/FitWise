@@ -189,8 +189,8 @@ export default function WorkoutPage() {
         }`}
       >
         <button
-          onClick={() => alert("Workout ended!")}
-          className="bg-red-500 text-white px-8 py-4 rounded-lg font-semibold hover:shadow-lg transition-all"
+          onClick={() => router.push('/summary')}
+          className="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-lg font-semibold hover:shadow-lg transition-all"
         >
           End Workout
         </button>

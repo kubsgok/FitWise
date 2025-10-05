@@ -42,6 +42,8 @@ def run_pose_detection(shared_data):
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
     current_workout_id = "0"
+    recorded_data = []  # 🟢 store the first 5 seconds of landmarks
+    record_start = None
 
     with PoseLandmarker.create_from_options(options) as landmarker:
         start_time = time.time()
@@ -79,15 +81,29 @@ def run_pose_detection(shared_data):
 
                 reps, feedback = getRepsFromWorkoutId(pose_result.pose_landmarks[0], w, h, str(current_workout_id))
                 print(feedback if feedback else "", end='\r')
-                # ✅ Store the latest data in the shared dict (overwrites old)
-                shared_data["json"] = json.dumps({
+
+                # ✅ Save snapshot to shared_data
+                data_entry = {
                     "timestamp": timestamp_ms,
                     "workoutId": current_workout_id,
                     "landmarks": landmarks,
                     "reps": reps,
                     "message": feedback,
-                })
-                shared_data["reps"] = reps  # optional separate field for quick access
+                }
+                shared_data["json"] = json.dumps(data_entry)
+                shared_data["reps"] = reps
+
+                # # 🟢 Record first 5 seconds of data
+                # if record_start is None:
+                #     record_start = time.time()
+                # elif time.time() - record_start <= 3:
+                #     recorded_data.append(data_entry)
+                # elif len(recorded_data) > 0:
+                #     # Save to file once 5 seconds pass
+                #     with open("13.json", "w") as f:
+                #         json.dump(recorded_data, f, indent=2)
+                #     print("\n💾 Saved first 5 seconds of landmarks to 13.json")
+                #     recorded_data.clear()  # prevent saving repeatedly
 
                 cv2.putText(frame, f'Reps: {reps}', (10, 70),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
@@ -98,7 +114,6 @@ def run_pose_detection(shared_data):
 
     cap.release()
     cv2.destroyAllWindows()
-
 
 # ------------------------- SocketIO Server Process -------------------------
 def run_socket_server(shared_data):
