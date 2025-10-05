@@ -308,6 +308,8 @@ export default function TrainingPage() {
         workoutId
       );
       setAccuracy(accuracyScore);
+      // In handleLandmark function, after setAccuracy(accuracyScore)
+      setMaxAccuracyReached(prev => Math.max(prev, accuracyScore)); // Track max accuracy
 
       const newReps = parsedData.reps;
       setCurrentRep(newReps);
@@ -435,7 +437,6 @@ export default function TrainingPage() {
 
   const resetWorkout = () => {
     setIsPlaying(false);
-    setCurrentRep(0);
     setAccuracy(0);
     setElapsedTime(0);
     setCameraActive(false);
@@ -628,6 +629,16 @@ export default function TrainingPage() {
   // **NEW: Intelligent live feedback system**
   // Replace lines 553-567 with this:
   const checkForLiveFeedback = (newReps, newAccuracy, formMessage) => {
+    // Add this in checkForLiveFeedback function, around line 731
+    // Update tracking variables
+    if (newReps > lastRepCount) {
+      setTotalRepsCompleted(newReps); // Track the highest rep count reached
+      setCurrentRep(newReps); // Also update current rep display
+    }
+
+    setLastRepCount(newReps);
+    setLastAccuracy(newAccuracy);
+    setLastFormMessage(formMessage || "");
     const now = Date.now();
 
     // **CRITICAL: Block ALL feedback if AI is currently speaking or processing**
