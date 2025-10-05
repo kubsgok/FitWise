@@ -68,7 +68,7 @@ export default function SummaryPage() {
 
   const getAverageAccuracy = () => {
     if (sessions.length === 0) return 0;
-    const sum = sessions.reduce((acc, s) => acc + (s.averageAccuracy || s.accuracy || 0), 0);
+    const sum = sessions.reduce((acc, s) => acc + (s.accuracy || 0), 0);
     return Math.round(sum / sessions.length);
   };
 
@@ -271,7 +271,7 @@ export default function SummaryPage() {
                   <div>
                     <p className="text-sm text-gray-600">Accuracy</p>
                     <p className="text-lg font-semibold text-green-600">
-                      {session.averageAccuracy || session.accuracy || 0}%
+                      {session.accuracy || 0}%
                     </p>
                   </div>
                   <div>
@@ -279,16 +279,6 @@ export default function SummaryPage() {
                     <p className="text-lg font-semibold text-gray-900">
                       {formatDuration(session.duration)}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Status</p>
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                      session.completed 
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {session.completed ? 'Completed' : 'Incomplete'}
-                    </span>
                   </div>
                 </div>
               </div>
