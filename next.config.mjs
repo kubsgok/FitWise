@@ -1,4 +1,11 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
-
-export default nextConfig;
+const nextConfig = {
+    experimental: {
+      serverComponentsExternalPackages: [
+        'fluent-ffmpeg',
+        '@ffmpeg-installer/ffmpeg',
+      ],
+    },
+  };
+  
+  export default nextConfig;  
