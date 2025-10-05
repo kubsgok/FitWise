@@ -84,6 +84,8 @@ export default function TrainingPage() {
   // NEW: Workout tracking state for storage
   const [maxAccuracyReached, setMaxAccuracyReached] = useState(0);
   const [totalRepsCompleted, setTotalRepsCompleted] = useState(0);
+  const [collectedLandmarks, setCollectedLandmarks] = useState([]);
+  const [landmarkCollectionStart, setLandmarkCollectionStart] = useState(null);
 
   // Workout data based on URL params
   const workouts = {
@@ -300,17 +302,29 @@ export default function TrainingPage() {
     // listener
     const handleLandmark = async (data) => {
       const parsedData = JSON.parse(data);
-      //log landmarks
       const latestLandmarks = parsedData.landmarks;
       const workoutId = searchParams.get("workout");
+
+      // Start collection timer when workout starts
+      if (isPlaying && cameraActive && landmarkCollectionStart === null) {
+        setLandmarkCollectionStart(Date.now());
+      }
+
+      // Collect landmarks for first 10 seconds
+      if (
+        isPlaying &&
+        cameraActive &&
+        landmarkCollectionStart &&
+        Date.now() - landmarkCollectionStart <= 10000
+      ) {
+        setCollectedLandmarks((prev) => [...prev, latestLandmarks]);
+      }
 
       const accuracyScore = await compareLandmarksAccuracy(
         latestLandmarks,
         workoutId
       );
       setAccuracy(accuracyScore);
-      // In handleLandmark function, after setAccuracy(accuracyScore)
-      setMaxAccuracyReached(prev => Math.max(prev, accuracyScore)); // Track max accuracy
 
       const newReps = parsedData.reps;
       setCurrentRep(newReps);
@@ -438,9 +452,12 @@ export default function TrainingPage() {
 
   const resetWorkout = () => {
     setIsPlaying(false);
+    setCurrentRep(0);
     setAccuracy(0);
     setElapsedTime(0);
     setCameraActive(false);
+    setLandmarkCollectionStart(null);
+    setCollectedLandmarks([]);
 
     // Clear timer
     if (timerRef.current) {
@@ -464,7 +481,6 @@ export default function TrainingPage() {
   };
 
   // NEW: Save and end workout function
-  // NEW: Save and end workout function
   const saveAndEndWorkout = () => {
     if (!currentWorkout) return;
 
@@ -474,8 +490,8 @@ export default function TrainingPage() {
       category: currentWorkout.category || "General",
       completedReps: totalRepsCompleted,
       targetReps: currentWorkout.target,
-      accuracy: Math.round(maxAccuracyReached), // Main accuracy field
-      averageAccuracy: Math.round(maxAccuracyReached), // Also set this
+      averageAccuracy: Math.round(accuracy),
+      maxAccuracy: Math.round(maxAccuracyReached),
       duration: elapsedTime,
       targetDuration: currentWorkout.duration,
       completed: totalRepsCompleted >= currentWorkout.target,
@@ -484,6 +500,7 @@ export default function TrainingPage() {
       percentComplete: Math.round(
         (totalRepsCompleted / currentWorkout.target) * 100
       ),
+      collectedLandmarks, // <-- first 10 seconds of landmarks
     };
 
     const savedSession = saveWorkoutSession(data);
@@ -614,55 +631,25 @@ export default function TrainingPage() {
   };
 
   const checkBackPostureCritical = (formMessage) => {
-  if (!formMessage) return false;
-  
+    if (!formMessage) return false;
+
     // Match patterns like "Deviation: 131.0°" or "Deviation: 45°"
     const deviationMatch = formMessage.match(/Deviation:\s*(\d+(?:\.\d+)?)/i);
-    
+
     if (deviationMatch) {
       const deviation = parseFloat(deviationMatch[1]);
       if (deviation > 30) {
         return true;
       }
     }
-    
+
     return false;
   };
   // **NEW: Intelligent live feedback system**
-  // Replace lines 553-567 with this:
   const checkForLiveFeedback = (newReps, newAccuracy, formMessage) => {
-    // Add this in checkForLiveFeedback function, around line 731
-    // Update tracking variables
-    if (newReps > lastRepCount) {
-      setTotalRepsCompleted(newReps); // Track the highest rep count reached
-      setCurrentRep(newReps); // Also update current rep display
-    }
-
-    setLastRepCount(newReps);
-    setLastAccuracy(newAccuracy);
-    setLastFormMessage(formMessage || "");
     const now = Date.now();
 
-    // **CRITICAL: Block ALL feedback if AI is currently speaking or processing**
-    if (isSpeaking || isAIProcessing) return;
-
-    // **PRIORITY 1: Critical back posture**
-    if (checkBackPostureCritical(formMessage)) {
-      // Changed from 10000 to 15000 (15 seconds minimum between warnings)
-      const recentBackWarnings = recentFeedbackMessages.filter(
-        (msg) => msg.type === "back_posture_critical" && now - msg.timestamp < 15000
-      ).length;
-
-      if (recentBackWarnings === 0) {
-        feedbackCooldown.current = now;
-        provideLiveFeedback("back_posture_critical", newReps, newAccuracy, formMessage);
-        return;
-      }
-    }
-
-  // Rest of your code continues here...
-
-    // Prevent feedback spam (minimum 15 seconds between other AI feedback)
+    // Prevent feedback spam (minimum 15 seconds between AI feedback)
     if (now - feedbackCooldown.current < 15000) return;
 
     // Skip if AI is already processing or speaking
@@ -688,7 +675,7 @@ export default function TrainingPage() {
 
       // Limit to 1 correction per minute
       const recentFormCorrections = recentFeedbackMessages.filter(
-        (msg) => msg.type === "form_correction" && now - msg.timestamp < 60000
+        (msg) => msg.type === "form_correction" && now - msg.timestamp < 15000
       ).length;
 
       if (recentFormCorrections < 1) {
@@ -711,16 +698,16 @@ export default function TrainingPage() {
       setHasGivenEncouragement(true);
     }
 
-    // 3. Rep milestone celebration
+    // 3. Rep milestone celebration (only at 50% and completion)
     else if (currentWorkout && newReps > 0 && newReps !== lastRepCount) {
       const shouldCelebrate =
-        newReps === Math.floor(currentWorkout.target * 0.5) ||
-        newReps === Math.floor(currentWorkout.target * 0.75);
+        newReps === Math.floor(currentWorkout.target * 0.5) || // Halfway point only
+        newReps === Math.floor(currentWorkout.target * 0.75); // 75% completion only
 
       if (shouldCelebrate) {
         const recentMilestones = recentFeedbackMessages.filter(
           (msg) =>
-            msg.type === "milestone_celebration" && now - msg.timestamp < 45000
+            msg.type === "milestone_celebration" && now - msg.timestamp < 30000 // within 45 seconds
         ).length;
 
         if (recentMilestones === 0) {
@@ -730,26 +717,28 @@ export default function TrainingPage() {
       }
     }
 
-    // 4. Workout completion
+    // 4. Workout completion - PRIORITY FEEDBACK (bypasses cooldowns)
     if (
       currentWorkout &&
       newReps >= currentWorkout.target &&
       lastRepCount < currentWorkout.target
     ) {
+      // Reset cooldown to ensure completion message always plays
       feedbackCooldown.current = 0;
       shouldGiveFeedback = true;
       feedbackType = "workout_complete";
     }
 
-    // 5. Positive reinforcement
+    // 5. Positive reinforcement (when form is good and no recent feedback) - VERY RARE
     else if (
       newAccuracy >= 90 &&
       newReps > 4 &&
-      now - feedbackCooldown.current > 45000
+      now - feedbackCooldown.current > 30000
     ) {
+      // 45 seconds minimum, very high accuracy
       const recentPositive = recentFeedbackMessages.filter(
         (msg) =>
-          msg.type === "positive_reinforcement" && now - msg.timestamp < 90000
+          msg.type === "positive_reinforcement" && now - msg.timestamp < 70000 // within 1.5 minutes
       ).length;
 
       if (recentPositive === 0) {
@@ -758,7 +747,7 @@ export default function TrainingPage() {
       }
     }
 
-    // 6. Time-based encouragement
+    // 6. Time-based encouragement (only once at 90 seconds)
     else if (elapsedTime === 40 && elapsedTime !== lastFeedbackTime) {
       shouldGiveFeedback = true;
       feedbackType = "time_encouragement";
@@ -776,144 +765,148 @@ export default function TrainingPage() {
     setLastFormMessage(formMessage || "");
   };
 
-// Helper: Generate appropriate prompt based on feedback type
-const generateFeedbackPrompt = (feedbackType, reps, formMessage, recentContext) => {
-  const workoutTitle = currentWorkout?.title;
-  const targetReps = currentWorkout?.target;
-  const avoidRepetition = recentContext 
-    ? `Avoid repeating: "${recentContext}". ` 
-    : "";
+  // **NEW: Provide contextual live feedback**
+  const provideLiveFeedback = async (
+    feedbackType,
+    reps,
+    currentAccuracy,
+    formMessage
+  ) => {
+    // Build context to avoid repetition
+    const recentContext = recentFeedbackMessages
+      .slice(-3)
+      .map((msg) => msg.content)
+      .join("; ");
 
-  const prompts = {
-    // NEW: Critical back posture warning
-    back_posture_critical: () =>
-      `URGENT: The user's back posture angle is dangerously high during ${workoutTitle}. Tell them to straighten their back RIGHT NOW in one firm but encouraging sentence. Use words like "straighten your back" or "fix your posture".`,
+    // Generate feedback prompt based on type
+    const feedbackPrompt = generateFeedbackPrompt(
+      feedbackType,
+      reps,
+      formMessage,
+      recentContext
+    );
 
-    form_correction: () => {
-      const topIssue = getMostFrequentFormIssue();
-      
-      if (topIssue || formMessage) {
-        const issue = formMessage;
-        return `${avoidRepetition}The user has a form issue during ${workoutTitle}: "${issue}". Give one short, natural correction focusing on this mistake.`;
+    if (!feedbackPrompt) return;
+
+    try {
+      setIsAIProcessing(true);
+      const aiResponse = await fetchAIFeedback(feedbackPrompt);
+
+      if (aiResponse) {
+        trackFeedbackMessage(feedbackType, aiResponse);
+        addToSpeechHistory(aiResponse);
+        await speakText(aiResponse);
       }
-      
-      return `${avoidRepetition}Give a brief, natural form correction for ${workoutTitle}. One conversational sentence only.`;
-    },
-
-    halfway_encouragement: () =>
-      `${avoidRepetition}The user is halfway through ${workoutTitle}. Give one natural sentence of encouragement.`,
-
-    milestone_celebration: () =>
-      `${avoidRepetition}The user hit ${reps} reps for ${workoutTitle}. Give one natural sentence of celebration.`,
-
-    workout_complete: () =>
-      `${avoidRepetition}The user completed all ${targetReps} reps of ${workoutTitle}! Give one enthusiastic congratulatory sentence.`,
-
-    positive_reinforcement: () =>
-      `${avoidRepetition}The user is doing great with ${workoutTitle}. Give one natural sentence of positive reinforcement.`,
-
-    time_encouragement: () =>
-      `${avoidRepetition}The user has been working out for 90 seconds. Give one sentence of time-based encouragement.`
+    } catch (error) {
+      console.error("Live feedback error:", error);
+    } finally {
+      setIsAIProcessing(false);
+    }
   };
 
-  return prompts[feedbackType]?.() || "";
-};
-
-// Helper: Get most frequent form issue
-const getMostFrequentFormIssue = () => {
-  const sortedIssues = Object.entries(formMessageFrequency)
-    .sort((a, b) => b[1] - a[1]);
-  
-  return sortedIssues.length > 0 ? sortedIssues[0][0] : null;
-};
-
-// Helper: Fetch AI feedback
-const fetchAIFeedback = async (prompt) => {
-  const systemPrompt = `You are Coach Mike, a motivational male fitness trainer. Give exactly ONE brief sentence of natural encouragement. Do NOT use formatting like asterisks, bullets, or multiple phrases. Do NOT include words like "Workout Commences" or stage directions. Just give one natural, conversational sentence. Examples: "Nice form on that rep!" or "Keep that energy up!" or "You're crushing it!"`;
-
-  const response = await fetch("/api/gemini", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt,
-      systemPrompt,
-      model: "gemini-2.0-flash-exp",
-      options: {
-        temperature: 0.9,
-        maxOutputTokens: 50,
-      },
-    }),
-  });
-
-  if (!response.ok) return null;
-
-  const result = await response.json();
-  return result.response;
-};
-
-// Helper: Track feedback to avoid repetition
-const trackFeedbackMessage = (feedbackType, content) => {
-  const newMessage = {
-    type: feedbackType,
-    content,
-    timestamp: Date.now(),
-  };
-
-  setRecentFeedbackMessages((prev) => 
-    [...prev, newMessage].slice(-10) // Keep only last 10
-  );
-};
-
-// Helper: Add to speech history
-const addToSpeechHistory = (text) => {
-  setSpeechHistory((prev) => [
-    ...prev,
-    {
-      text: `🔴 Live: ${text}`,
-      timestamp: new Date(),
-      isAI: true,
-      isLive: true,
-    },
-  ]);
-};
-// **NEW: Provide contextual live feedback**
-const provideLiveFeedback = async (
-  feedbackType,
-  reps,
-  currentAccuracy,
-  formMessage
-) => {
-  // Build context to avoid repetition
-  const recentContext = recentFeedbackMessages
-    .slice(-3)
-    .map((msg) => msg.content)
-    .join("; ");
-
-  // Generate feedback prompt based on type
-  const feedbackPrompt = generateFeedbackPrompt(
+  // Helper: Generate appropriate prompt based on feedback type
+  const generateFeedbackPrompt = (
     feedbackType,
     reps,
     formMessage,
     recentContext
-  );
+  ) => {
+    const workoutTitle = currentWorkout?.title;
+    const targetReps = currentWorkout?.target;
+    const avoidRepetition = recentContext
+      ? `Avoid repeating: "${recentContext}". `
+      : "";
 
-  if (!feedbackPrompt) return;
+    const prompts = {
+      form_correction: () => {
+        const topIssue = getMostFrequentFormIssue();
 
-  try {
-    setIsAIProcessing(true);
-    const aiResponse = await fetchAIFeedback(feedbackPrompt);
-    
-    if (aiResponse) {
-      trackFeedbackMessage(feedbackType, aiResponse);
-      addToSpeechHistory(aiResponse);
-      await speakText(aiResponse);
-    }
-  } catch (error) {
-    console.error("Live feedback error:", error);
-  } finally {
-    setIsAIProcessing(false);
-  }
-};
+        if (topIssue || formMessage) {
+          const issue = formMessage;
+          return `${avoidRepetition}The user has a form issue during ${workoutTitle}: "${issue}". Give one short, natural correction focusing on this mistake.`;
+        }
+
+        return `${avoidRepetition}Give a brief, natural form correction for ${workoutTitle}. One conversational sentence only.`;
+      },
+
+      halfway_encouragement: () =>
+        `${avoidRepetition}The user is halfway through ${workoutTitle}. Give one natural sentence of encouragement.`,
+
+      milestone_celebration: () =>
+        `${avoidRepetition}The user hit ${reps} reps for ${workoutTitle}. Give one natural sentence of celebration.`,
+
+      workout_complete: () =>
+        `${avoidRepetition}The user completed all ${targetReps} reps of ${workoutTitle}! Give one enthusiastic congratulatory sentence.`,
+
+      positive_reinforcement: () =>
+        `${avoidRepetition}The user is doing great with ${workoutTitle}. Give one natural sentence of positive reinforcement.`,
+
+      time_encouragement: () =>
+        `${avoidRepetition}The user has been working out for 90 seconds. Give one sentence of time-based encouragement.`,
+    };
+
+    return prompts[feedbackType]?.() || "";
+  };
+
+  // Helper: Get most frequent form issue
+  const getMostFrequentFormIssue = () => {
+    const sortedIssues = Object.entries(formMessageFrequency).sort(
+      (a, b) => b[1] - a[1]
+    );
+
+    return sortedIssues.length > 0 ? sortedIssues[0][0] : null;
+  };
+
+  // Helper: Fetch AI feedback
+  const fetchAIFeedback = async (prompt) => {
+    const systemPrompt = `You are Coach Mike, a motivational male fitness trainer. Give exactly ONE brief sentence of natural encouragement. Do NOT use formatting like asterisks, bullets, or multiple phrases. Do NOT include words like "Workout Commences" or stage directions. Just give one natural, conversational sentence. Examples: "Nice form on that rep!" or "Keep that energy up!" or "You're crushing it!"`;
+
+    const response = await fetch("/api/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
+        systemPrompt,
+        model: "gemini-2.0-flash-exp",
+        options: {
+          temperature: 0.9,
+          maxOutputTokens: 50,
+        },
+      }),
+    });
+
+    if (!response.ok) return null;
+
+    const result = await response.json();
+    return result.response;
+  };
+
+  // Helper: Track feedback to avoid repetition
+  const trackFeedbackMessage = (feedbackType, content) => {
+    const newMessage = {
+      type: feedbackType,
+      content,
+      timestamp: Date.now(),
+    };
+
+    setRecentFeedbackMessages(
+      (prev) => [...prev, newMessage].slice(-10) // Keep only last 10
+    );
+  };
+
+  // Helper: Add to speech history
+  const addToSpeechHistory = (text) => {
+    setSpeechHistory((prev) => [
+      ...prev,
+      {
+        text: `🔴 Live: ${text}`,
+        timestamp: new Date(),
+        isAI: true,
+        isLive: true,
+      },
+    ]);
+  };
+
   // **NEW: Function to convert text to speech**
   const speakText = async (text) => {
     try {
@@ -1270,7 +1263,9 @@ const provideLiveFeedback = async (
 
           {/* Workout Header */}
           <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-2 text-white">{currentWorkout.title}</h2>
+            <h2 className="text-2xl font-bold mb-2 text-white">
+              {currentWorkout.title}
+            </h2>
             <p className="text-sm text-white">{currentWorkout.description}</p>
           </div>
 

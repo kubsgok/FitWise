@@ -14,9 +14,9 @@ export default function SummaryPage() {
   const [selectedSession, setSelectedSession] = useState(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Check if accessed from "End Workout" button vs saved workout
-  const fromEndWorkout = searchParams.get('from') === 'end-workout';
+  const fromEndWorkout = searchParams.get("from") === "end-workout";
 
   useEffect(() => {
     loadSessions();
@@ -53,19 +53,19 @@ export default function SummaryPage() {
 
   const formatDate = (isoString) => {
     const date = new Date(isoString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const getAverageAccuracy = () => {
@@ -215,11 +215,11 @@ export default function SummaryPage() {
       {showDeleteModal && sessionToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
           {/* Backdrop */}
-          <div 
+          <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setShowDeleteModal(false)}
           />
-          
+
           {/* Modal */}
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scaleIn">
             <button
@@ -228,17 +228,22 @@ export default function SummaryPage() {
             >
               <X className="w-5 h-5" />
             </button>
-            
+
             <div className="mb-6">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
                 <Trash2 className="w-6 h-6 text-red-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Delete Workout?</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Delete Workout?
+              </h3>
               <p className="text-gray-600">
-                This will permanently delete "<strong>{sessionToDelete.workoutTitle}</strong>" from {formatDate(sessionToDelete.timestamp)}. This action cannot be undone.
+                This will permanently delete "
+                <strong>{sessionToDelete.workoutTitle}</strong>" from{" "}
+                {formatDate(sessionToDelete.timestamp)}. This action cannot be
+                undone.
               </p>
             </div>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
@@ -261,11 +266,11 @@ export default function SummaryPage() {
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
           {/* Backdrop */}
-          <div 
+          <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setShowClearModal(false)}
           />
-          
+
           {/* Modal */}
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scaleIn">
             <button
@@ -274,17 +279,21 @@ export default function SummaryPage() {
             >
               <X className="w-5 h-5" />
             </button>
-            
+
             <div className="mb-6">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
                 <Trash2 className="w-6 h-6 text-red-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Clear All History?</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Clear All History?
+              </h3>
               <p className="text-gray-600">
-                This will permanently delete all {sessions.length} workout session{sessions.length !== 1 ? 's' : ''} from your history. This action cannot be undone.
+                This will permanently delete all {sessions.length} workout
+                session{sessions.length !== 1 ? "s" : ""} from your history.
+                This action cannot be undone.
               </p>
             </div>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowClearModal(false)}
@@ -302,20 +311,22 @@ export default function SummaryPage() {
           </div>
         </div>
       )}
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => router.push(fromEndWorkout ? '/' : '/workout')}
+            onClick={() => router.push(fromEndWorkout ? "/" : "/workout")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
-            {fromEndWorkout ? 'Back to Home' : 'Back to Workouts'}
+            {fromEndWorkout ? "Back to Home" : "Back to Workouts"}
           </button>
-          
+
           <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-bold text-gray-900">Workout History</h1>
+            <h1 className="text-4xl font-bold text-gray-900">
+              Workout History
+            </h1>
             {sessions.length > 0 && !fromEndWorkout && (
               <button
                 onClick={handleClearAll}
@@ -334,25 +345,37 @@ export default function SummaryPage() {
             <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
               <div className="flex items-center gap-3 mb-2">
                 <Award className="w-8 h-8 text-blue-600" />
-                <h3 className="text-sm font-semibold text-gray-600">Total Workouts</h3>
+                <h3 className="text-sm font-semibold text-gray-600">
+                  Total Workouts
+                </h3>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{getTotalWorkouts()}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {getTotalWorkouts()}
+              </p>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
               <div className="flex items-center gap-3 mb-2">
                 <TrendingUp className="w-8 h-8 text-green-600" />
-                <h3 className="text-sm font-semibold text-gray-600">Avg Accuracy</h3>
+                <h3 className="text-sm font-semibold text-gray-600">
+                  Avg Accuracy
+                </h3>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{getAverageAccuracy()}%</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {getAverageAccuracy()}%
+              </p>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
               <div className="flex items-center gap-3 mb-2">
                 <Clock className="w-8 h-8 text-purple-600" />
-                <h3 className="text-sm font-semibold text-gray-600">Total Time</h3>
+                <h3 className="text-sm font-semibold text-gray-600">
+                  Total Time
+                </h3>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{getTotalTime()}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {getTotalTime()}
+              </p>
             </div>
           </div>
         )}
@@ -361,10 +384,14 @@ export default function SummaryPage() {
         {sessions.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center shadow-lg">
             <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">No workout history yet</h3>
-            <p className="text-gray-500 mb-6">Complete your first workout to see it here</p>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              No workout history yet
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Complete your first workout to see it here
+            </p>
             <button
-              onClick={() => router.push('/workout')}
+              onClick={() => router.push("/workout")}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
             >
               Start a Workout
@@ -373,11 +400,18 @@ export default function SummaryPage() {
         ) : (
           <div className="space-y-4">
             {sessions.map((session) => (
-              <div key={session.id} className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+              <div
+                key={session.id}
+                className="bg-white rounded-xl p-6 shadow-lg border border-gray-100"
+              >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">{session.workoutTitle}</h3>
-                    <p className="text-sm text-gray-500">{formatDate(session.timestamp)}</p>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {session.workoutTitle}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {formatDate(session.timestamp)}
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -418,6 +452,18 @@ export default function SummaryPage() {
                     </p>
                   </div>
                 </div>
+                {/* AI Movement Analysis Section */}
+                {session.collectedLandmarks &&
+                  session.collectedLandmarks.length > 0 && (
+                    <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                      <h4 className="text-md font-semibold text-blue-700 mb-2">
+                        AI Movement Analysis
+                      </h4>
+                      <p className="text-sm text-blue-900">
+                        {aiAnalysis[session.id] || "Analyzing..."}
+                      </p>
+                    </div>
+                  )}
               </div>
             ))}
           </div>
