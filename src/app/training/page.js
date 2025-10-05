@@ -300,6 +300,7 @@ export default function TrainingPage() {
     // listener
     const handleLandmark = async (data) => {
       const parsedData = JSON.parse(data);
+      //log landmarks
       const latestLandmarks = parsedData.landmarks;
       const workoutId = searchParams.get("workout");
 
@@ -463,6 +464,7 @@ export default function TrainingPage() {
   };
 
   // NEW: Save and end workout function
+  // NEW: Save and end workout function
   const saveAndEndWorkout = () => {
     if (!currentWorkout) return;
 
@@ -472,8 +474,8 @@ export default function TrainingPage() {
       category: currentWorkout.category || "General",
       completedReps: totalRepsCompleted,
       targetReps: currentWorkout.target,
-      averageAccuracy: Math.round(accuracy),
-      maxAccuracy: Math.round(maxAccuracyReached),
+      accuracy: Math.round(maxAccuracyReached), // Main accuracy field
+      averageAccuracy: Math.round(maxAccuracyReached), // Also set this
       duration: elapsedTime,
       targetDuration: currentWorkout.duration,
       completed: totalRepsCompleted >= currentWorkout.target,
