@@ -82,50 +82,200 @@ export default function TrainingPage() {
   // Workout data based on URL params
   const workouts = {
     // Arms
-    1: { title: "Bicep Curls", target: 12, duration: 300, description: "Control the weight on both up and down movements" },
-    2: { title: "Tricep Dips", target: 10, duration: 300, description: "Keep your body straight and control the movement" },
-    7: { title: "Hammer Curls", target: 12, duration: 240, description: "Use neutral grip and control the weight" },
-    8: { title: "Overhead Press", target: 10, duration: 360, description: "Press straight up and lower with control" },
-    
+    1: {
+      title: "Bicep Curls",
+      target: 12,
+      duration: 300,
+      description: "Control the weight on both up and down movements",
+    },
+    2: {
+      title: "Tricep Dips",
+      target: 10,
+      duration: 300,
+      description: "Keep your body straight and control the movement",
+    },
+    7: {
+      title: "Hammer Curls",
+      target: 12,
+      duration: 240,
+      description: "Use neutral grip and control the weight",
+    },
+    8: {
+      title: "Overhead Press",
+      target: 10,
+      duration: 360,
+      description: "Press straight up and lower with control",
+    },
+
     // Legs
-    3: { title: "Squats", target: 15, duration: 300, description: "Keep your back straight and lower down slowly" },
-    4: { title: "Lunges", target: 12, duration: 300, description: "Step forward and keep your balance" },
-    9: { title: "Calf Raises", target: 20, duration: 180, description: "Rise up on your toes and control the descent" },
-    10: { title: "Wall Sits", target: 3, duration: 240, description: "Hold position with your back against the wall" },
-    
+    3: {
+      title: "Squats",
+      target: 15,
+      duration: 300,
+      description: "Keep your back straight and lower down slowly",
+    },
+    4: {
+      title: "Lunges",
+      target: 12,
+      duration: 300,
+      description: "Step forward and keep your balance",
+    },
+    9: {
+      title: "Calf Raises",
+      target: 20,
+      duration: 180,
+      description: "Rise up on your toes and control the descent",
+    },
+    10: {
+      title: "Wall Sits",
+      target: 3,
+      duration: 240,
+      description: "Hold position with your back against the wall",
+    },
+
     // Core
-    5: { title: "Plank", target: 3, duration: 180, description: "Hold position and keep your core tight" },
-    6: { title: "Sit-ups", target: 15, duration: 300, description: "Focus on using your core, not your neck" },
-    11: { title: "Russian Twists", target: 20, duration: 240, description: "Rotate your torso while keeping your core engaged" },
-    12: { title: "Mountain Climbers", target: 20, duration: 180, description: "Keep your core tight and maintain steady pace" },
-    
+    5: {
+      title: "Plank",
+      target: 3,
+      duration: 180,
+      description: "Hold position and keep your core tight",
+    },
+    6: {
+      title: "Sit-ups",
+      target: 15,
+      duration: 300,
+      description: "Focus on using your core, not your neck",
+    },
+    11: {
+      title: "Russian Twists",
+      target: 20,
+      duration: 240,
+      description: "Rotate your torso while keeping your core engaged",
+    },
+    12: {
+      title: "Mountain Climbers",
+      target: 20,
+      duration: 180,
+      description: "Keep your core tight and maintain steady pace",
+    },
+
     // Chest
-    13: { title: "Push-ups", target: 12, duration: 300, description: "Keep your body in a straight line from head to heels" },
-    14: { title: "Chest Press", target: 10, duration: 360, description: "Control the weight both up and down" },
-    15: { title: "Chest Flys", target: 12, duration: 240, description: "Use controlled movements and feel the stretch" },
-    
+    13: {
+      title: "Push-ups",
+      target: 12,
+      duration: 300,
+      description: "Keep your body in a straight line from head to heels",
+    },
+    14: {
+      title: "Chest Press",
+      target: 10,
+      duration: 360,
+      description: "Control the weight both up and down",
+    },
+    15: {
+      title: "Chest Flys",
+      target: 12,
+      duration: 240,
+      description: "Use controlled movements and feel the stretch",
+    },
+
     // Back
-    16: { title: "Pull-ups", target: 8, duration: 360, description: "Pull yourself up using your back muscles" },
-    17: { title: "Rows", target: 12, duration: 300, description: "Pull the weight towards your torso" },
-    18: { title: "Reverse Flys", target: 15, duration: 240, description: "Squeeze your shoulder blades together" },
-    
+    16: {
+      title: "Pull-ups",
+      target: 8,
+      duration: 360,
+      description: "Pull yourself up using your back muscles",
+    },
+    17: {
+      title: "Rows",
+      target: 12,
+      duration: 300,
+      description: "Pull the weight towards your torso",
+    },
+    18: {
+      title: "Reverse Flys",
+      target: 15,
+      duration: 240,
+      description: "Squeeze your shoulder blades together",
+    },
+
     // Shoulders
-    19: { title: "Lateral Raises", target: 12, duration: 240, description: "Lift weights to the side with control" },
-    20: { title: "Front Raises", target: 12, duration: 240, description: "Lift weights to the front with straight arms" },
-    21: { title: "Shoulder Shrugs", target: 15, duration: 180, description: "Lift your shoulders up and squeeze" },
-    
+    19: {
+      title: "Lateral Raises",
+      target: 12,
+      duration: 240,
+      description: "Lift weights to the side with control",
+    },
+    20: {
+      title: "Front Raises",
+      target: 12,
+      duration: 240,
+      description: "Lift weights to the front with straight arms",
+    },
+    21: {
+      title: "Shoulder Shrugs",
+      target: 15,
+      duration: 180,
+      description: "Lift your shoulders up and squeeze",
+    },
+
     // Cardio
-    22: { title: "Jumping Jacks", target: 30, duration: 180, description: "Jump with energy and maintain rhythm" },
-    23: { title: "Burpees", target: 10, duration: 240, description: "Complete movement from squat to jump" },
-    24: { title: "High Knees", target: 30, duration: 180, description: "Lift your knees high and pump your arms" },
-    
+    22: {
+      title: "Jumping Jacks",
+      target: 30,
+      duration: 180,
+      description: "Jump with energy and maintain rhythm",
+    },
+    23: {
+      title: "Burpees",
+      target: 10,
+      duration: 240,
+      description: "Complete movement from squat to jump",
+    },
+    24: {
+      title: "High Knees",
+      target: 30,
+      duration: 180,
+      description: "Lift your knees high and pump your arms",
+    },
+
     // Stretching
-    25: { title: "Forward Fold", target: 1, duration: 120, description: "Stretch forward slowly and hold the position" },
-    26: { title: "Shoulder Rolls", target: 10, duration: 120, description: "Roll your shoulders in smooth circles" },
-    27: { title: "Hip Circles", target: 10, duration: 180, description: "Move your hips in controlled circular motions" },
-    28: { title: "Cat-Cow Stretch", target: 10, duration: 180, description: "Alternate between arching and rounding your back" },
-    29: { title: "Quad Stretch", target: 2, duration: 120, description: "Hold your foot behind you and feel the stretch" },
-    30: { title: "Child's Pose", target: 1, duration: 180, description: "Relax in this restorative position" },
+    25: {
+      title: "Forward Fold",
+      target: 1,
+      duration: 120,
+      description: "Stretch forward slowly and hold the position",
+    },
+    26: {
+      title: "Shoulder Rolls",
+      target: 10,
+      duration: 120,
+      description: "Roll your shoulders in smooth circles",
+    },
+    27: {
+      title: "Hip Circles",
+      target: 10,
+      duration: 180,
+      description: "Move your hips in controlled circular motions",
+    },
+    28: {
+      title: "Cat-Cow Stretch",
+      target: 10,
+      duration: 180,
+      description: "Alternate between arching and rounding your back",
+    },
+    29: {
+      title: "Quad Stretch",
+      target: 2,
+      duration: 120,
+      description: "Hold your foot behind you and feel the stretch",
+    },
+    30: {
+      title: "Child's Pose",
+      target: 1,
+      duration: 180,
+      description: "Relax in this restorative position",
+    },
   };
 
   useEffect(() => {
@@ -184,6 +334,33 @@ export default function TrainingPage() {
   };
 }, [searchParams, cameraActive]);
 
+      let message = parsedData.message;
+      if (message && message.length > 0) {
+        setLiveFeedback(message);
+      }
+
+      // **NEW: Trigger intelligent live feedback**
+      checkForLiveFeedback(newReps, accuracyScore, message);
+
+      // console.log("💡 Feedback message:", message);
+    };
+    socket.on("landmark", handleLandmark);
+
+    // interval to emit every second
+    const intervalId = setInterval(() => {
+      if (socket.connected) {
+        socket.emit("landmark", workoutId);
+      }
+    }, 1000);
+
+    // cleanup on unmount or page change
+    return () => {
+      console.log("🧹 Cleaning up socket + interval");
+      clearInterval(intervalId);
+      socket.off("landmark", handleLandmark);
+      socket.disconnect(); // or comment this out if you want to persist connection
+    };
+  }, [searchParams, cameraActive]);
 
   useEffect(() => {
     if (cameraActive) {
@@ -246,7 +423,7 @@ export default function TrainingPage() {
     setAccuracy(0);
     setElapsedTime(0);
     setCameraActive(false);
-    
+
     // Reset live feedback tracking
     setWorkoutStartTime(null);
     setMaxAccuracyReached(0);
@@ -607,7 +784,7 @@ export default function TrainingPage() {
     try {
       setIsAIProcessing(true);
       setLiveFeedback("🤖 AI is analyzing your request...");
-      
+
       // Create a fitness-focused system prompt
       const systemPrompt = `You are Coach Mike, a motivational male fitness trainer and bodybuilder with 15+ years of experience. You have a deep, encouraging voice and speak like a supportive gym coach. The user is currently doing a ${currentWorkout?.title} workout.
       
@@ -882,7 +1059,7 @@ export default function TrainingPage() {
               {/* Back Button - MODIFIED */}
               <div className="mb-4 flex gap-2">
                 <button
-                  onClick={() => router.push('/workout')}
+                  onClick={() => router.push("/workout")}
                   className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg font-medium transition-all text-sm w-full justify-center"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -899,8 +1076,12 @@ export default function TrainingPage() {
 
               {/* Workout Header */}
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">{currentWorkout.title}</h2>
-                <p className="text-gray-600 text-sm">{currentWorkout.description}</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {currentWorkout.title}
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  {currentWorkout.description}
+                </p>
               </div>
 
               {/* Progress Stats */}
@@ -990,15 +1171,21 @@ export default function TrainingPage() {
                 </div>
 
                 {isProcessing && (
-                  <p className="text-xs text-purple-600 mb-2">🎤 Converting speech to text...</p>
+                  <p className="text-xs text-purple-600 mb-2">
+                    🎤 Converting speech to text...
+                  </p>
                 )}
 
                 {isAIProcessing && (
-                  <p className="text-xs text-blue-600 mb-2">🤖 AI is thinking...</p>
+                  <p className="text-xs text-blue-600 mb-2">
+                    🤖 AI is thinking...
+                  </p>
                 )}
 
                 {isSpeaking && (
-                  <p className="text-xs text-green-600 mb-2">🔊 AI is speaking...</p>
+                  <p className="text-xs text-green-600 mb-2">
+                    🔊 AI is speaking...
+                  </p>
                 )}
 
                 {transcription && (
@@ -1008,8 +1195,13 @@ export default function TrainingPage() {
                 )}
 
                 <div className="text-xs text-purple-600">
-                  <p>Click the microphone to speak with your AI trainer (5 sec limit)</p>
-                  <p className="text-purple-500 mt-1">💬 Ask about form, get motivation, or request tips!</p>
+                  <p>
+                    Click the microphone to speak with your AI trainer (5 sec
+                    limit)
+                  </p>
+                  <p className="text-purple-500 mt-1">
+                    💬 Ask about form, get motivation, or request tips!
+                  </p>
                 </div>
               </div>
 
