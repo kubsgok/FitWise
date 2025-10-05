@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Camera, Play, Pause, RotateCcw, Target, Timer, TrendingUp, ArrowLeft, Mic, MicOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import NavBar from '../components/NavBar';
+import { getSocket } from '../socket';
 
 /** 4) Feature-detect the best audio MIME type for this browser */
 function pickAudioMime() {
@@ -94,13 +95,46 @@ export default function TrainingPage() {
   };
 
   useEffect(() => {
-    const workoutId = searchParams.get('workout');
-    if (workoutId && workouts[workoutId]) {
-      setCurrentWorkout(workouts[workoutId]);
-    } else {
-      setCurrentWorkout(workouts[1]); // Default workout
+  const workoutId = searchParams.get('workout');
+  if (workoutId && workouts[workoutId]) {
+    setCurrentWorkout(workouts[workoutId]);
+  }
+
+  const socket = getSocket();
+
+  // only connect if not already connected
+  if (!socket.connected && cameraActive) {
+    socket.connect();
+  }
+
+  // listener
+  const handleLandmark = (data) => {
+    //console.log("📡 Landmark data:", data);
+    setCurrentRep(JSON.parse(data).reps);
+    let message = JSON.parse(data).message;
+    if (message && message.length > 0) {
+      setLiveFeedback(message);
     }
-  }, [searchParams]);
+    // console.log("💡 Feedback message:", message);
+  };
+  socket.on("landmark", handleLandmark);
+
+  // interval to emit every second
+  const intervalId = setInterval(() => {
+    if (socket.connected) {
+      socket.emit("landmark", workoutId);
+    }
+  }, 1000);
+
+  // cleanup on unmount or page change
+  return () => {
+    console.log("🧹 Cleaning up socket + interval");
+    clearInterval(intervalId);
+    socket.off("landmark", handleLandmark);
+    socket.disconnect(); // or comment this out if you want to persist connection
+  };
+}, [searchParams, cameraActive]);
+
 
   useEffect(() => {
     if (cameraActive) {
@@ -113,35 +147,6 @@ export default function TrainingPage() {
       stopCamera();
     };
   }, [cameraActive]);
-
-  useEffect(() => {
-    let interval;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setElapsedTime((prev) => prev + 1);
-        setAccuracy((prev) => Math.min(100, prev + Math.random() * 5 - 2));
-        
-        // Generate live feedback based on accuracy
-        const currentAcc = accuracy;
-        if (currentAcc >= 90) {
-          setLiveFeedback("Excellent form! Keep it up!");
-        } else if (currentAcc >= 75) {
-          setLiveFeedback("Good form. Try to maintain control throughout the movement.");
-        } else if (currentAcc >= 60) {
-          setLiveFeedback("Focus on your posture. Keep your back straight.");
-        } else {
-          setLiveFeedback("Slow down and focus on proper form over speed.");
-        }
-        
-        if (Math.random() > 0.95 && currentWorkout) {
-          setCurrentRep((prev) => Math.min(currentWorkout.target, prev + 1));
-        }
-      }, 1000);
-    } else {
-      setLiveFeedback("Ready to start your workout");
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, currentWorkout, accuracy]);
 
   const startCamera = async () => {
     try {
@@ -337,7 +342,7 @@ export default function TrainingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <NavBar />
+      {/* <NavBar /> */}
       <div className="container mx-auto px-4 py-6">
         <div className="grid lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
           {/* Camera View - Left Side */}
