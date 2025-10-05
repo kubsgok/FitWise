@@ -291,16 +291,16 @@ export default function ScanningPage() {
                     {/* Post-scan navigation buttons */}
                     <div className="flex flex-col gap-3">
                       <button
-                        onClick={() => router.push("/")}
-                        className="bg-white border-2 border-orange-500 text-orange-500 px-6 py-3 rounded-lg font-semibold hover:bg-orange-50 hover:shadow-lg transition-all"
-                      >
-                        Return Home
-                      </button>
-                      <button
                         onClick={() => router.push("/workout")}
                         className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
                       >
                         Start Training
+                      </button>
+                      <button
+                        onClick={() => router.push("/")}
+                        className="bg-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                      >
+                        Return Home
                       </button>
                     </div>
                   </>
