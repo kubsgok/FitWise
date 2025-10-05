@@ -95,14 +95,22 @@ export default function WorkoutPage() {
           >
             Explore exercises tailored to specific body parts. Select a category to get started and improve your fitness journey.
           </p>
-          <div className="mt-6">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
             <button
-              onClick={() => router.push("/home")}
+              onClick={() => router.push("/")}
               className={`bg-orange-500 text-white px-8 py-4 rounded-lg font-semibold hover:shadow-lg transition-all transform duration-700 delay-200 ${
                 pageLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
               }`}
             >
               Back to Home
+            </button>
+            <button
+              onClick={() => router.push("/scanning")}
+              className={`bg-blue-500 text-white px-8 py-4 rounded-lg font-semibold hover:shadow-lg transition-all transform duration-700 delay-300 ${
+                pageLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+              }`}
+            >
+              Body Scan
             </button>
           </div>
           <div className="mt-12"></div> {/* Added gap below the button */}
