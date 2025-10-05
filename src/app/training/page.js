@@ -79,6 +79,7 @@ export default function TrainingPage() {
   const [recentFeedbackMessages, setRecentFeedbackMessages] = useState([]); // Track recent messages
   const [formIssueCount, setFormIssueCount] = useState(0); // Track consecutive form issues
   const [lastFormMessage, setLastFormMessage] = useState(''); // Track CV feedback messages
+  const [formMessageFrequency, setFormMessageFrequency] = useState({});
   // NEW: Workout tracking state for storage
   const [maxAccuracyReached, setMaxAccuracyReached] = useState(0);
   const [totalRepsCompleted, setTotalRepsCompleted] = useState(0);
@@ -614,13 +615,22 @@ export default function TrainingPage() {
     const formMessageChanged = formMessage !== lastFormMessage && formMessage && formMessage.length > 0;
     
     // 1. Form correction feedback (low accuracy OR new form message)
-    if ((newAccuracy < 50 || formMessageChanged) && newReps > 2) { // Stricter conditions
-      // Check if we've given too many form corrections recently
+    if ((newAccuracy < 50 || formMessageChanged) && newReps > 2) {
+  // Track how many times each form issue appears
+      setFormMessageFrequency(prev => {
+        const updated = { ...prev };
+        if (formMessage) {
+          updated[formMessage] = (updated[formMessage] || 0) + 1;
+        }
+        return updated;
+      });
+
+      // Limit to 1 correction per minute
       const recentFormCorrections = recentFeedbackMessages.filter(
-        msg => msg.type === 'form_correction' && (now - msg.timestamp) < 60000 // within 1 minute
+        msg => msg.type === 'form_correction' && (now - msg.timestamp) < 60000
       ).length;
-      
-      if (recentFormCorrections < 1) { // Max 1 form correction per minute
+
+      if (recentFormCorrections < 1) {
         shouldGiveFeedback = true;
         feedbackType = 'form_correction';
         if (formMessageChanged) {
@@ -628,6 +638,7 @@ export default function TrainingPage() {
         }
       }
     }
+
 
     // 2. Progress encouragement (halfway point)
     else if (
@@ -705,9 +716,18 @@ export default function TrainingPage() {
     const avoidRepetition = recentMessages ? `Avoid repeating these recent messages: "${recentMessages}". ` : '';
     
     switch (feedbackType) {
-      case 'form_correction':
-        feedbackPrompt = `Give a brief, natural form correction for ${currentWorkout?.title}. Say it like a real trainer would - one conversational sentence only.`;
+      case 'form_correction': {
+        // Find which form issue occurs most often
+        const sortedIssues = Object.entries(formMessageFrequency)
+          .sort((a, b) => b[1] - a[1]);
+        const topIssue = sortedIssues.length > 0 ? sortedIssues[0][0] : null;
+
+        feedbackPrompt = topIssue
+          ? `The user keeps getting the same form issue during ${currentWorkout?.title}: "${topIssue}". Give one short, natural correction focusing mainly on that repeated mistake.`
+          : `Give a brief, natural form correction for ${currentWorkout?.title}. Say it like a real trainer would - one conversational sentence only.`;
         break;
+      }
+
         
       case 'halfway_encouragement':
         feedbackPrompt = `The user is halfway through their ${currentWorkout?.title} workout. Give one natural sentence of encouragement like a real trainer would.`;
@@ -1123,13 +1143,6 @@ export default function TrainingPage() {
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back
-                </button>
-                <button
-                  onClick={saveAndEndWorkout}
-                  className="flex-1 flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-medium transition-all text-sm justify-center"
-                >
-                  <Save className="w-4 h-4" />
-                  Save
                 </button>
               </div>
 
