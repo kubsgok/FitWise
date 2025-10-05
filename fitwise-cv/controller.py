@@ -20,13 +20,3 @@ def stop_tracking():
         os.kill(process.pid, signal.SIGTERM)
         process = None
 
-if __name__ == "__main__":
-    from time import sleep
-
-    start_tracking()   # 🚀 Start the pose tracker
-    print("Tracker running... (press Ctrl+C to stop)")
-    try:
-        while True:
-            sleep(1)
-    except KeyboardInterrupt:
-        stop_tracking()
