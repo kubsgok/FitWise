@@ -446,6 +446,37 @@ export default function TrainingPage() {
     setFormIssueCount(0);
     setLastFormMessage('');
     feedbackCooldown.current = 0;
+    setMaxAccuracyReached(0);
+    setTotalRepsCompleted(0);
+  };
+
+  // NEW: Save and end workout function
+  const saveAndEndWorkout = () => {
+    if (!currentWorkout) return;
+
+    const data = {
+      workoutTitle: currentWorkout.title,
+      workoutId: searchParams.get('workout'),
+      category: currentWorkout.category || 'General',
+      completedReps: totalRepsCompleted,
+      targetReps: currentWorkout.target,
+      averageAccuracy: Math.round(accuracy),
+      maxAccuracy: Math.round(maxAccuracyReached),
+      duration: elapsedTime,
+      targetDuration: currentWorkout.duration,
+      completed: totalRepsCompleted >= currentWorkout.target,
+      startTime: workoutStartTime,
+      endTime: new Date(),
+      percentComplete: Math.round((totalRepsCompleted / currentWorkout.target) * 100)
+    };
+
+    const savedSession = saveWorkoutSession(data);
+    
+    if (savedSession) {
+      router.push('/summary');
+    } else {
+      alert('Failed to save workout. Please try again.');
+    }
   };
 
   const formatTime = (seconds) => {
@@ -1356,4 +1387,3 @@ async function compareLandmarksAccuracy(latestLandmarks, workoutId) {
     return 0;
   }
 }
-

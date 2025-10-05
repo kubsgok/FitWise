@@ -1,13 +1,18 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getWorkoutSessions, deleteSession, clearAllSessions } from '../../utilities/workoutStorage';
-import { ArrowLeft, Trash2, TrendingUp, Target, Clock, Award } from 'lucide-react';
+import { ArrowLeft, Trash2, TrendingUp, Target, Clock, Award, X } from 'lucide-react';
 import NavBar from '../components/NavBar';
 
 export default function SummaryPage() {
   const [sessions, setSessions] = useState([]);
+  const [showClearModal, setShowClearModal] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Check if accessed from "End Workout" button vs saved workout
+  const fromEndWorkout = searchParams.get('from') === 'end-workout';
 
   useEffect(() => {
     loadSessions();
@@ -26,10 +31,13 @@ export default function SummaryPage() {
   };
 
   const handleClearAll = () => {
-    if (confirm('Delete all workout history? This cannot be undone.')) {
-      clearAllSessions();
-      loadSessions();
-    }
+    setShowClearModal(true);
+  };
+
+  const confirmClearAll = () => {
+    clearAllSessions();
+    loadSessions();
+    setShowClearModal(false);
   };
 
   const formatDate = (isoString) => {
@@ -51,14 +59,14 @@ export default function SummaryPage() {
 
   const getAverageAccuracy = () => {
     if (sessions.length === 0) return 0;
-    const sum = sessions.reduce((acc, s) => acc + s.accuracy, 0);
+    const sum = sessions.reduce((acc, s) => acc + (s.averageAccuracy || s.accuracy || 0), 0);
     return Math.round(sum / sessions.length);
   };
 
   const getTotalWorkouts = () => sessions.length;
 
   const getTotalTime = () => {
-    const total = sessions.reduce((acc, s) => acc + s.duration, 0);
+    const total = sessions.reduce((acc, s) => acc + (s.duration || 0), 0);
     return formatDuration(total);
   };
 
@@ -66,20 +74,66 @@ export default function SummaryPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <NavBar />
       
+      {/* Clear All Confirmation Modal */}
+      {showClearModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowClearModal(false)}
+          />
+          
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scaleIn">
+            <button
+              onClick={() => setShowClearModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="mb-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Clear All History?</h3>
+              <p className="text-gray-600">
+                This will permanently delete all {sessions.length} workout session{sessions.length !== 1 ? 's' : ''} from your history. This action cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowClearModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmClearAll}
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition"
+              >
+                Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => router.push('/workout')}
+            onClick={() => router.push(fromEndWorkout ? '/' : '/workout')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
-            Back to Workouts
+            {fromEndWorkout ? 'Back to Home' : 'Back to Workouts'}
           </button>
           
           <div className="flex justify-between items-center">
             <h1 className="text-4xl font-bold text-gray-900">Workout History</h1>
-            {sessions.length > 0 && (
+            {sessions.length > 0 && !fromEndWorkout && (
               <button
                 onClick={handleClearAll}
                 className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition"
@@ -142,12 +196,14 @@ export default function SummaryPage() {
                     <h3 className="text-xl font-bold text-gray-900">{session.workoutTitle}</h3>
                     <p className="text-sm text-gray-500">{formatDate(session.timestamp)}</p>
                   </div>
-                  <button
-                    onClick={() => handleDelete(session.id)}
-                    className="text-red-500 hover:text-red-700 p-2"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  {!fromEndWorkout && (
+                    <button
+                      onClick={() => handleDelete(session.id)}
+                      className="text-red-500 hover:text-red-700 p-2"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -159,7 +215,9 @@ export default function SummaryPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Accuracy</p>
-                    <p className="text-lg font-semibold text-green-600">{session.accuracy}%</p>
+                    <p className="text-lg font-semibold text-green-600">
+                      {session.averageAccuracy || session.accuracy || 0}%
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Duration</p>

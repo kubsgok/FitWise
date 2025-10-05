@@ -104,14 +104,6 @@ export default function WorkoutPage() {
             >
               Back to Home
             </button>
-            <button
-              onClick={() => router.push("/scanning")}
-              className={`bg-blue-500 text-white px-8 py-4 rounded-lg font-semibold hover:shadow-lg transition-all transform duration-700 delay-300 ${
-                pageLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-              }`}
-            >
-              Body Scan
-            </button>
           </div>
           <div className="mt-12"></div> {/* Added gap below the button */}
         </div>
@@ -189,7 +181,7 @@ export default function WorkoutPage() {
         }`}
       >
         <button
-          onClick={() => router.push('/summary')}
+          onClick={() => router.push('/summary?from=end-workout')}
           className="bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-lg font-semibold hover:shadow-lg transition-all"
         >
           End Workout
