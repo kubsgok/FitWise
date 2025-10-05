@@ -325,34 +325,6 @@ export default function TrainingPage() {
       }
     }, 1000);
 
-  // cleanup on unmount or page change
-  return () => {
-    console.log("🧹 Cleaning up socket + interval");
-    clearInterval(intervalId);
-    socket.off("landmark", handleLandmark);
-    socket.disconnect(); // or comment this out if you want to persist connection
-  };
-}, [searchParams, cameraActive]);
-
-      let message = parsedData.message;
-      if (message && message.length > 0) {
-        setLiveFeedback(message);
-      }
-
-      // **NEW: Trigger intelligent live feedback**
-      checkForLiveFeedback(newReps, accuracyScore, message);
-
-      // console.log("💡 Feedback message:", message);
-    };
-    socket.on("landmark", handleLandmark);
-
-    // interval to emit every second
-    const intervalId = setInterval(() => {
-      if (socket.connected) {
-        socket.emit("landmark", workoutId);
-      }
-    }, 1000);
-
     // cleanup on unmount or page change
     return () => {
       console.log("🧹 Cleaning up socket + interval");
@@ -916,333 +888,262 @@ export default function TrainingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* <NavBar /> */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
-          {/* Camera View - Left Side */}
-          <div className="lg:col-span-3">
-            <div className="bg-black rounded-2xl overflow-hidden h-full relative shadow-2xl">
-              {cameraActive ? (
-                <>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover transform -scale-x-100"
-                  />
-                  {/* 🟢 Overlay landmark animation */}
-                  <LandmarkOverlay
-                    workoutId={searchParams.get("workout")}
-                    videoRef={videoRef}
-                  />
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                  <div className="text-center text-white max-w-md">
-                    <Camera className="w-24 h-24 mx-auto mb-4 text-gray-400" />
-                    <h3 className="text-2xl font-semibold mb-2">
-                      Camera Ready
-                    </h3>
-                    <p className="text-gray-300 mb-4">
-                      Click below to enable your camera
-                    </p>
-                    <button
-                      onClick={() => setCameraActive(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all mb-4"
-                    >
-                      Enable Camera
-                    </button>
-                    <div className="text-xs text-gray-400 mt-2">
-                      <p>Troubleshooting:</p>
-                      <p>• Allow camera permissions when prompted</p>
-                      <p>• Make sure no other apps are using your camera</p>
-                      <p>• Try refreshing the page if needed</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Overlay Controls */}
-              <div className="absolute bottom-6 left-6 right-6 flex justify-between items-center">
-                <div className="bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
-                  <span className="text-sm">
-                    Time: {formatTime(elapsedTime)}
-                  </span>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={toggleWorkout}
-                    className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full transition-all transform hover:scale-105 shadow-lg"
-                  >
-                    {isPlaying ? (
-                      <Pause className="w-6 h-6" />
-                    ) : (
-                      <Play className="w-6 h-6" />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={resetWorkout}
-                    className="bg-gray-600 hover:bg-gray-700 text-white p-3 rounded-full transition-all transform hover:scale-105 shadow-lg"
-                  >
-                    <RotateCcw className="w-6 h-6" />
-                  </button>
-
-                  <button
-                    onClick={toggleVoiceRecording}
-                    className={`${
-                      isRecording
-                        ? "bg-red-600 hover:bg-red-700 animate-pulse"
-                        : "bg-purple-600 hover:bg-purple-700"
-                    } text-white p-3 rounded-full transition-all transform hover:scale-105 shadow-lg`}
-                    disabled={isProcessing}
-                  >
-                    {isRecording ? (
-                      <MicOff className="w-6 h-6" />
-                    ) : (
-                      <Mic className="w-6 h-6" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Voice Command Overlay */}
-              {(isRecording ||
-                isProcessing ||
-                isAIProcessing ||
-                transcription) && (
-                <div className="absolute top-6 left-6 right-6">
-                  <div className="bg-black/80 backdrop-blur-sm rounded-lg p-4 text-white">
-                    {isRecording && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                        <span className="text-sm">Listening... (5s max)</span>
-                      </div>
-                    )}
-                    {isProcessing && !isRecording && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        <span className="text-sm">
-                          Converting speech to text...
-                        </span>
-                      </div>
-                    )}
-                    {isAIProcessing && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="animate-pulse text-blue-400">AI</div>
-                        <span className="text-sm">AI is thinking...</span>
-                      </div>
-                    )}
-                    {isSpeaking && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="animate-bounce text-green-400">SPEAKING</div>
-                        <span className="text-sm">AI is speaking...</span>
-                      </div>
-                    )}
-                    {transcription && (
-                      <div className="text-sm">
-                        <strong>You said:</strong> "{transcription}"
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+  <div className="min-h-screen w-full relative overflow-hidden">
+    {/* Full-page video background */}
+    <div className="absolute inset-0 w-full h-full">
+      {cameraActive ? (
+        <>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover transform -scale-x-100"
+          />
+          <LandmarkOverlay
+            workoutId={searchParams.get("workout")}
+            videoRef={videoRef}
+          />
+        </>
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+          <div className="text-center text-white max-w-md backdrop-blur-xl bg-white/10 p-8 rounded-3xl border border-white/20">
+            <Camera className="w-24 h-24 mx-auto mb-4 text-white/60" />
+            <h3 className="text-2xl font-semibold mb-2">Camera Ready</h3>
+            <p className="text-white/80 mb-4">Click below to enable your camera</p>
+            <button
+              onClick={() => setCameraActive(true)}
+              className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white px-6 py-3 rounded-xl font-semibold transition-all border border-white/30"
+            >
+              Enable Camera
+            </button>
           </div>
+        </div>
+      )}
+    </div>
 
-          {/* Workout Panel - Right Side */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl p-6 h-full shadow-xl border border-gray-100 overflow-y-auto">
-              {/* Back Button - MODIFIED */}
-              <div className="mb-4 flex gap-2">
-                <button
-                  onClick={() => router.push("/workout")}
-                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg font-medium transition-all text-sm w-full justify-center"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back
-                </button>
-                <button
-                  onClick={saveAndEndWorkout}
-                  className="flex-1 flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-medium transition-all text-sm justify-center"
-                >
-                  <Save className="w-4 h-4" />
-                  Save
-                </button>
-              </div>
+    {/* Glassy Stats Panel - Left Side */}
+    <div className="absolute top-6 left-6 z-10 w-72 space-y-4">
+      {/* Reps Card */}
+      <div className="backdrop-blur-xl bg-white/10 p-6 rounded-3xl border border-white/20 shadow-2xl">
+        <div className="flex items-center gap-3 mb-3">
+          <Target className="w-8 h-8 text-blue-400" />
+          <span className="text-lg font-semibold text-white">Reps</span>
+        </div>
+        <div className="text-5xl font-bold text-white mb-3">
+          {currentRep}/{currentWorkout.target}
+        </div>
+        <div className="w-full bg-white/20 rounded-full h-3">
+          <div
+            className="bg-blue-400 h-3 rounded-full transition-all duration-300"
+            style={{ width: `${getProgressPercentage()}%` }}
+          ></div>
+        </div>
+      </div>
 
-              {/* Workout Header */}
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  {currentWorkout.title}
-                </h2>
-                <p className="text-gray-600 text-sm">
-                  {currentWorkout.description}
-                </p>
-              </div>
-
-              {/* Progress Stats */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Target className="w-5 h-5 text-blue-600" />
-                    <span className="text-sm font-semibold text-blue-900">
-                      Reps
-                    </span>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-800">
-                    {currentRep}/{currentWorkout.target}
-                  </div>
-                  <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${getProgressPercentage()}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-5 h-5 text-green-600" />
-                    <span className="text-sm font-semibold text-green-900">
-                      Accuracy
-                    </span>
-                  </div>
-                  <div
-                    className={`text-2xl font-bold ${getAccuracyColor(
-                      accuracy
-                    )}`}
-                  >
-                    {Math.round(accuracy)}%
-                  </div>
-                </div>
-              </div>
-
-              {/* Timer */}
-              <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Timer className="w-5 h-5 text-orange-600" />
-                  <span className="text-sm font-semibold text-orange-900">
-                    Workout Time
-                  </span>
-                </div>
-                <div className="text-3xl font-bold text-orange-800">
-                  {formatTime(elapsedTime)}
-                </div>
-                <div className="text-xs text-orange-600 mt-1">
-                  Target: {formatTime(currentWorkout.duration)}
-                </div>
-              </div>
-
-              {/* Live Feedback */}
-              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                <h3 className="text-sm font-semibold text-blue-900 mb-2">
-                  Live Feedback
-                </h3>
-                <p className="text-sm text-blue-800 leading-relaxed">
-                  {liveFeedback}
-                </p>
-              </div>
-
-              {/* Speech-to-Text Section */}
-              <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-purple-900">
-                    AI Voice Assistant
-                  </h3>
-                  <button
-                    onClick={toggleVoiceRecording}
-                    className={`p-2 rounded-lg transition-all ${
-                      isRecording
-                        ? "bg-red-100 text-red-600 animate-pulse"
-                        : "bg-purple-100 text-purple-600 hover:bg-purple-200"
-                    }`}
-                    disabled={isProcessing || isAIProcessing}
-                  >
-                    {isRecording ? (
-                      <MicOff className="w-4 h-4" />
-                    ) : (
-                      <Mic className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-
-                {isProcessing && (
-                  <p className="text-xs text-purple-600 mb-2">
-                    🎤 Converting speech to text...
-                  </p>
-                )}
-
-                {isAIProcessing && (
-                  <p className="text-xs text-blue-600 mb-2">
-                    🤖 AI is thinking...
-                  </p>
-                )}
-
-                {isSpeaking && (
-                  <p className="text-xs text-green-600 mb-2">
-                    🔊 AI is speaking...
-                  </p>
-                )}
-
-                {transcription && (
-                  <div className="text-xs text-purple-700 mb-2 p-2 bg-purple-100 rounded">
-                    <strong>Transcribed:</strong> "{transcription}"
-                  </div>
-                )}
-
-                <div className="text-xs text-purple-600">
-                  <p>
-                    Click the microphone to speak with your AI trainer (5 sec
-                    limit)
-                  </p>
-                  <p className="text-purple-500 mt-1">
-                    💬 Ask about form, get motivation, or request tips!
-                  </p>
-                </div>
-              </div>
-
-              {/* Speech History */}
-              {speechHistory.length > 0 && (
-                <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                    Recent Speech
-                  </h3>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {speechHistory
-                      .slice(-4)
-                      .reverse()
-                      .map((speech, index) => (
-                        <div
-                          key={index}
-                          className={`text-xs p-2 rounded ${
-                            speech.isLive
-                              ? "bg-red-100 text-red-800 border-l-2 border-red-400"
-                              : speech.isAI
-                              ? "bg-blue-100 text-blue-800 border-l-2 border-blue-400"
-                              : "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          <div className="font-medium">{speech.text}</div>
-                          <div className="text-xs opacity-70 mt-1">
-                            {speech.timestamp.toLocaleTimeString()}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Accuracy Card */}
+      <div className="backdrop-blur-xl bg-white/10 p-6 rounded-3xl border border-white/20 shadow-2xl">
+        <div className="flex items-center gap-3 mb-3">
+          <TrendingUp className="w-8 h-8 text-green-400" />
+          <span className="text-lg font-semibold text-white">Accuracy</span>
+        </div>
+        <div className={`text-5xl font-bold ${getAccuracyColor(accuracy)}`}>
+          {Math.round(accuracy)}%
         </div>
       </div>
     </div>
-  );
-}
 
+    {/* Large Live Feedback - Top Center */}
+    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10 max-w-2xl w-full px-4">
+      <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-8 border border-white/20 shadow-2xl">
+        <h3 className="text-xl font-semibold text-white mb-4 text-center">Live Feedback</h3>
+        <p className="text-2xl text-white/95 leading-relaxed text-center font-medium">
+          {liveFeedback}
+        </p>
+      </div>
+    </div>
+
+    {/* Voice Command Overlay - Below Live Feedback */}
+    {(isRecording || isProcessing || isAIProcessing || transcription) && (
+      <div className="absolute top-52 left-1/2 transform -translate-x-1/2 z-10 max-w-md w-full px-4">
+        <div className="backdrop-blur-xl bg-black/40 rounded-2xl p-4 text-white border border-white/20 shadow-2xl">
+          {isRecording && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-sm">Listening... (5s max)</span>
+            </div>
+          )}
+          {isProcessing && !isRecording && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              <span className="text-sm">Converting speech to text...</span>
+            </div>
+          )}
+          {isAIProcessing && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="animate-pulse text-blue-400">AI</div>
+              <span className="text-sm">AI is thinking...</span>
+            </div>
+          )}
+          {isSpeaking && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="animate-bounce text-green-400">SPEAKING</div>
+              <span className="text-sm">AI is speaking...</span>
+            </div>
+          )}
+          {transcription && (
+            <div className="text-sm">
+              <strong>You said:</strong> "{transcription}"
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* Glassy overlay controls - Bottom Center */}
+    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
+      <div className="flex items-center gap-4 backdrop-blur-xl bg-black/30 rounded-full px-6 py-3 border border-white/20 shadow-2xl">
+        <div className="text-white text-sm font-medium">
+          Time: {formatTime(elapsedTime)}
+        </div>
+        
+        <div className="flex gap-2">
+          <button
+            onClick={toggleWorkout}
+            className="backdrop-blur-md bg-white/20 hover:bg-white/30 text-white p-3 rounded-full transition-all border border-white/30 shadow-lg"
+          >
+            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+          </button>
+
+          <button
+            onClick={resetWorkout}
+            className="backdrop-blur-md bg-white/20 hover:bg-white/30 text-white p-3 rounded-full transition-all border border-white/30 shadow-lg"
+          >
+            <RotateCcw className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={toggleVoiceRecording}
+            className={`backdrop-blur-md ${
+              isRecording
+                ? "bg-red-500/40 hover:bg-red-500/50 animate-pulse"
+                : "bg-white/20 hover:bg-white/30"
+            } text-white p-3 rounded-full transition-all border border-white/30 shadow-lg`}
+            disabled={isProcessing}
+          >
+            {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* Glassy Workout Panel - Right Side */}
+    <div className="absolute top-6 right-6 z-10 w-80 max-h-[calc(100vh-48px)]">
+      <div className="backdrop-blur-xl bg-white/10 rounded-3xl p-6 border border-white/20 shadow-2xl overflow-y-auto max-h-full">
+        {/* Back and Save Buttons */}
+        <div className="mb-4 flex gap-2">
+          <button
+            onClick={() => router.push("/workout")}
+            className="flex items-center gap-2 backdrop-blur-md bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-xl font-medium transition-all text-sm w-full justify-center border border-white/30"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <button
+            onClick={saveAndEndWorkout}
+            className="flex-1 flex items-center gap-2 backdrop-blur-md bg-green-500/40 hover:bg-green-500/50 text-white px-3 py-2 rounded-xl font-medium transition-all text-sm justify-center border border-white/30"
+          >
+            <Save className="w-4 h-4" />
+            Save
+          </button>
+        </div>
+
+        {/* Workout Header */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            {currentWorkout.title}
+          </h2>
+          <p className="text-white/80 text-sm">
+            {currentWorkout.description}
+          </p>
+        </div>
+
+        {/* Timer */}
+        <div className="mb-6 p-4 backdrop-blur-md bg-white/10 rounded-2xl border border-white/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Timer className="w-5 h-5 text-orange-400" />
+            <span className="text-sm font-semibold text-white">Workout Time</span>
+          </div>
+          <div className="text-3xl font-bold text-white">
+            {formatTime(elapsedTime)}
+          </div>
+          <div className="text-xs text-white/70 mt-1">
+            Target: {formatTime(currentWorkout.duration)}
+          </div>
+        </div>
+
+        {/* AI Voice Assistant */}
+        <div className="mb-6 p-4 backdrop-blur-md bg-purple-500/20 rounded-2xl border border-purple-400/30">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-white">AI Voice Assistant</h3>
+            <button
+              onClick={toggleVoiceRecording}
+              className={`p-2 rounded-lg transition-all ${
+                isRecording
+                  ? "bg-red-500/40 text-white animate-pulse"
+                  : "bg-white/20 text-white hover:bg-white/30"
+              } border border-white/30`}
+              disabled={isProcessing || isAIProcessing}
+            >
+              {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {transcription && (
+            <div className="text-xs text-white mb-2 p-2 backdrop-blur-sm bg-white/10 rounded border border-white/20">
+              <strong>Transcribed:</strong> "{transcription}"
+            </div>
+          )}
+
+          <div className="text-xs text-white/80">
+            <p>Click the microphone to speak with your AI trainer (5 sec limit)</p>
+            <p className="text-white/60 mt-1">💬 Ask about form, get motivation, or request tips!</p>
+          </div>
+        </div>
+
+        {/* Speech History */}
+        {speechHistory.length > 0 && (
+          <div className="p-4 backdrop-blur-md bg-white/10 rounded-2xl border border-white/20">
+            <h3 className="text-sm font-semibold text-white mb-2">Recent Speech</h3>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {speechHistory
+                .slice(-4)
+                .reverse()
+                .map((speech, index) => (
+                  <div
+                    key={index}
+                    className={`text-xs p-2 rounded backdrop-blur-sm ${
+                      speech.isLive
+                        ? "bg-red-500/30 text-white border-l-2 border-red-400"
+                        : speech.isAI
+                        ? "bg-blue-500/30 text-white border-l-2 border-blue-400"
+                        : "bg-white/10 text-white/80"
+                    }`}
+                  >
+                    <div className="font-medium">{speech.text}</div>
+                    <div className="text-xs opacity-70 mt-1">
+                      {speech.timestamp.toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+);
+}
 // New function to compare landmarks accuracy
 // Compare live landmarks to the best-matching reference frame
 async function compareLandmarksAccuracy(latestLandmarks, workoutId) {
