@@ -1,16 +1,20 @@
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-export default function NavBar({ showBackButton = false, backText = "Back to Home", backHref = "/home" }) {
+export default function NavBar({ showBackButton = false, backText = "Back to Home", backHref = "/" }) {
+  const router = useRouter();
+
   return (
     <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200/60">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-center">
-          <Link href="/home" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+          <div 
+            className="flex items-center space-x-2 cursor-pointer" 
+            onClick={() => router.push("/")}
+          >
             <div className="w-8 h-8 rounded-lg" style={{background: 'linear-gradient(135deg, #FF8C00 0%, #FF6B35 100%)'}}></div>
-            <h1 className="text-2xl font-bold text-transparent" style={{background: 'linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text'}}>
-              FitWise
-            </h1>
-          </Link>
+            <span className="text-xl font-bold text-slate-900">FitWise</span>
+          </div>
           
           {showBackButton && (
             <div className="flex items-center space-x-4">

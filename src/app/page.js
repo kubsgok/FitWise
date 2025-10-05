@@ -27,82 +27,83 @@ export default function HomePage() {
 
     return () => observer.disconnect();
   }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <NavBar />
 
       <section className="container mx-auto px-6 py-20">
-  <div className="max-w-6xl mx-auto">
-    <div className="grid lg:grid-cols-1 gap-12 items-center">
-      <div className="text-center animate-fade-in-up">
-        <h1 className="text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
-          Your <span className="text-transparent" style={{background: 'linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text'}}>AI Fitness</span> Coach Awaits
-        </h1>
-        <p className="text-xl text-slate-600 mb-8 ">
-          Experience personalized workouts powered by artificial intelligence. Get real-time form corrections, curated training plans, and achieve your fitness goals faster than ever.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button 
-            onClick={() => router.push('/workout')}
-            className="text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105" 
-            style={{background: 'linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%)'}}
-          >
-            Begin Your Workout
-          </button>
-          <button 
-            className="bg-white text-slate-700 border-2 border-slate-300 px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all transform hover:scale-105" 
-            onMouseEnter={(e) => {e.target.style.borderColor = '#FF6B35'; e.target.style.color = '#FF6B35'}} 
-            onMouseLeave={(e) => {e.target.style.borderColor = ''; e.target.style.color = ''}}
-          >
-            Watch Demo
-          </button>
-        </div>
-      </div>
+        <div className="max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-1 gap-12 items-center">
+            <div className="text-center animate-fade-in-up">
+              <h1 className="text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
+                Your <span className="text-transparent" style={{background: 'linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text'}}>AI Fitness</span> Coach Awaits
+              </h1>
+              <p className="text-xl text-slate-600 mb-8">
+                Experience personalized workouts powered by artificial intelligence. Get real-time form corrections, curated training plans, and achieve your fitness goals faster than ever.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button 
+                  onClick={() => router.push('/workout')}
+                  className="text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105" 
+                  style={{background: 'linear-gradient(90deg, #FF8C00 0%, #FF6B35 100%)'}}
+                >
+                  Begin Your Workout
+                </button>
+                <button 
+                  className="bg-white text-slate-700 border-2 border-slate-300 px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all transform hover:scale-105" 
+                  onMouseEnter={(e) => {e.target.style.borderColor = '#FF6B35'; e.target.style.color = '#FF6B35'}} 
+                  onMouseLeave={(e) => {e.target.style.borderColor = ''; e.target.style.color = ''}}
+                >
+                  Watch Demo
+                </button>
+              </div>
+            </div>
 
-      <div className="relative max-w-2xl mx-auto w-full animate-fade-in-up animation-delay-300">
-        <div className="bg-gradient-to-br from-gray-700 to-gray-500 rounded-3xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105">
-          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 text-white">
-            <div className="flex items-center justify-between mb-4 animate-slide-in-left">
-              <h3 className="text-lg font-semibold">Today's Workout</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between animate-slide-in-right animation-delay-100 hover:bg-white/10 p-2 rounded-lg transition-all duration-300">
-                <div className="flex flex-col">
-                  <span>Push-ups</span>
-                  <span className="text-xs text-white/70">Accuracy: 92%</span>
+            <div className="relative max-w-2xl mx-auto w-full animate-fade-in-up animation-delay-300">
+              <div className="bg-gradient-to-br from-gray-700 to-gray-500 rounded-3xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105">
+                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 text-white">
+                  <div className="flex items-center justify-between mb-4 animate-slide-in-left">
+                    <h3 className="text-lg font-semibold">Today's Workout</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between animate-slide-in-right animation-delay-100 hover:bg-white/10 p-2 rounded-lg transition-all duration-300">
+                      <div className="flex flex-col">
+                        <span>Push-ups</span>
+                        <span className="text-xs text-white/70">Accuracy: 92%</span>
+                      </div>
+                      <span className="bg-white/30 px-2 py-1 rounded text-sm hover:bg-white/40 transition-all duration-300">3x12</span>
+                    </div>
+                    <div className="flex items-center justify-between animate-slide-in-right animation-delay-200 hover:bg-white/10 p-2 rounded-lg transition-all duration-300">
+                      <div className="flex flex-col">
+                        <span>Squats</span>
+                        <span className="text-xs text-white/70">Accuracy: 85%</span>
+                      </div>
+                      <span className="bg-white/30 px-2 py-1 rounded text-sm hover:bg-white/40 transition-all duration-300">3x15</span>
+                    </div>
+                    <div className="flex items-center justify-between animate-slide-in-right animation-delay-300 hover:bg-white/10 p-2 rounded-lg transition-all duration-300">
+                      <div className="flex flex-col">
+                        <span>Plank</span>
+                        <span className="text-xs text-white/70">Accuracy: 96%</span>
+                      </div>
+                      <span className="bg-white/30 px-2 py-1 rounded text-sm hover:bg-white/40 transition-all duration-300">45s</span>
+                    </div>
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-white/30 animate-slide-in-up animation-delay-400">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span>78%</span>
+                    </div>
+                    <div className="w-full bg-white/30 rounded-full h-2 mt-2 overflow-hidden">
+                      <div className="bg-white h-2 rounded-full animate-progress-fill transition-all duration-1000 ease-out" style={{width: '78%'}}></div>
+                    </div>
+                  </div>
                 </div>
-                <span className="bg-white/30 px-2 py-1 rounded text-sm hover:bg-white/40 transition-all duration-300">3x12</span>
-              </div>
-              <div className="flex items-center justify-between animate-slide-in-right animation-delay-200 hover:bg-white/10 p-2 rounded-lg transition-all duration-300">
-                <div className="flex flex-col">
-                  <span>Squats</span>
-                  <span className="text-xs text-white/70">Accuracy: 85%</span>
-                </div>
-                <span className="bg-white/30 px-2 py-1 rounded text-sm hover:bg-white/40 transition-all duration-300">3x15</span>
-              </div>
-              <div className="flex items-center justify-between animate-slide-in-right animation-delay-300 hover:bg-white/10 p-2 rounded-lg transition-all duration-300">
-                <div className="flex flex-col">
-                  <span>Plank</span>
-                  <span className="text-xs text-white/70">Accuracy: 96%</span>
-                </div>
-                <span className="bg-white/30 px-2 py-1 rounded text-sm hover:bg-white/40 transition-all duration-300">45s</span>
-              </div>
-            </div>
-            <div className="mt-6 pt-4 border-t border-white/30 animate-slide-in-up animation-delay-400">
-              <div className="flex justify-between text-sm">
-                <span>Progress</span>
-                <span>78%</span>
-              </div>
-              <div className="w-full bg-white/30 rounded-full h-2 mt-2 overflow-hidden">
-                <div className="bg-white h-2 rounded-full animate-progress-fill transition-all duration-1000 ease-out" style={{width: '78%'}}></div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
 
       {/* Features Section */}
       <section id="features" className="bg-white py-20">
@@ -151,8 +152,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-
 
       {/* Footer */}
       <footer className="bg-slate-900 py-12">
