@@ -8,6 +8,8 @@ import NavBar from '../components/NavBar';
 export default function SummaryPage() {
   const [sessions, setSessions] = useState([]);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -23,11 +25,18 @@ export default function SummaryPage() {
     setSessions(data.reverse()); // Most recent first
   };
 
-  const handleDelete = (id) => {
-    if (confirm('Delete this workout session?')) {
-      deleteSession(id);
+  const handleDelete = (session) => {
+    setSessionToDelete(session);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (sessionToDelete) {
+      deleteSession(sessionToDelete.id);
       loadSessions();
     }
+    setShowDeleteModal(false);
+    setSessionToDelete(null);
   };
 
   const handleClearAll = () => {
@@ -74,6 +83,52 @@ export default function SummaryPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <NavBar />
       
+      {/* Delete Session Confirmation Modal */}
+      {showDeleteModal && sessionToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowDeleteModal(false)}
+          />
+          
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scaleIn">
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="mb-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Delete Workout?</h3>
+              <p className="text-gray-600">
+                This will permanently delete "<strong>{sessionToDelete.workoutTitle}</strong>" from {formatDate(sessionToDelete.timestamp)}. This action cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Clear All Confirmation Modal */}
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
@@ -198,7 +253,7 @@ export default function SummaryPage() {
                   </div>
                   {!fromEndWorkout && (
                     <button
-                      onClick={() => handleDelete(session.id)}
+                      onClick={() => handleDelete(session)}
                       className="text-red-500 hover:text-red-700 p-2"
                     >
                       <Trash2 className="w-5 h-5" />
