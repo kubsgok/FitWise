@@ -325,6 +325,7 @@ export default function TrainingPage() {
         workoutId
       );
       setAccuracy(accuracyScore);
+      setMaxAccuracyReached((prev) => Math.max(prev, accuracyScore));
 
       const newReps = parsedData.reps;
       setCurrentRep(newReps);
@@ -452,9 +453,7 @@ export default function TrainingPage() {
 
   const resetWorkout = () => {
     setIsPlaying(false);
-    setCurrentRep(0);
     setAccuracy(0);
-    setElapsedTime(0);
     setCameraActive(false);
     setLandmarkCollectionStart(null);
     setCollectedLandmarks([]);
@@ -468,8 +467,6 @@ export default function TrainingPage() {
     // Reset live feedback tracking
     setWorkoutStartTime(null);
     setLastFeedbackTime(0);
-    setLastRepCount(0);
-    setLastAccuracy(0);
     setHasGivenEncouragement(false);
     setHasGivenFormCorrection(false);
     setRecentFeedbackMessages([]);
@@ -477,11 +474,10 @@ export default function TrainingPage() {
     setLastFormMessage("");
     feedbackCooldown.current = 0;
     setMaxAccuracyReached(0);
-    setTotalRepsCompleted(0);
+    // setTotalRepsCompleted(0);
   };
 
-  // NEW: Save and end workout function
-  const saveAndEndWorkout = () => {
+   const saveAndEndWorkout = () => {
     if (!currentWorkout) return;
 
     const data = {
@@ -490,8 +486,8 @@ export default function TrainingPage() {
       category: currentWorkout.category || "General",
       completedReps: totalRepsCompleted,
       targetReps: currentWorkout.target,
-      averageAccuracy: Math.round(accuracy),
-      maxAccuracy: Math.round(maxAccuracyReached),
+      accuracy: Math.round(maxAccuracyReached),
+      averageAccuracy: Math.round(maxAccuracyReached),
       duration: elapsedTime,
       targetDuration: currentWorkout.duration,
       completed: totalRepsCompleted >= currentWorkout.target,
@@ -500,7 +496,6 @@ export default function TrainingPage() {
       percentComplete: Math.round(
         (totalRepsCompleted / currentWorkout.target) * 100
       ),
-      collectedLandmarks, // <-- first 10 seconds of landmarks
     };
 
     const savedSession = saveWorkoutSession(data);
@@ -685,6 +680,16 @@ export default function TrainingPage() {
           setFormIssueCount((prev) => prev + 1);
         }
       }
+
+      // Add this in checkForLiveFeedback function, around line 731
+      // Update tracking variables
+      if (newReps > lastRepCount) {
+        setTotalRepsCompleted(newReps); // Track the highest rep count reached
+        setCurrentRep(newReps); // Also update current rep display
+      }
+      setLastRepCount(newReps);
+      setLastAccuracy(newAccuracy);
+      setLastFormMessage(formMessage || "");
     }
 
     // 2. Progress encouragement (halfway point)

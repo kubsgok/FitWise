@@ -1,9 +1,22 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { getWorkoutSessions, deleteSession, clearAllSessions } from '../../utilities/workoutStorage';
-import { ArrowLeft, Trash2, TrendingUp, Target, Clock, Award, X, MessageSquare } from 'lucide-react';
-import NavBar from '../components/NavBar';
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  getWorkoutSessions,
+  deleteSession,
+  clearAllSessions,
+} from "../../utilities/workoutStorage";
+import {
+  ArrowLeft,
+  Trash2,
+  TrendingUp,
+  Target,
+  Clock,
+  Award,
+  X,
+  MessageSquare,
+} from "lucide-react";
+import NavBar from "../components/NavBar";
 
 export default function SummaryPage() {
   const [sessions, setSessions] = useState([]);
@@ -12,6 +25,7 @@ export default function SummaryPage() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
+  const [aiFeedback, setAiFeedback] = useState(""); // NEW: AI feedback for modal
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -86,23 +100,91 @@ export default function SummaryPage() {
     setShowFeedbackModal(true);
   };
 
+  // Helper: Call Gemini AI for personalized feedback, including landmarks
+  const getAIFeedback = async (session) => {
+    // If AI summary already exists, use it
+    if (session.aiSummary && session.aiSummary.length > 0) {
+      setAiFeedback(session.aiSummary);
+      return;
+    }
+
+    // Build prompt, include landmarks if present
+    let prompt = `
+      Give personalized workout feedback for the following session:
+      - Workout: ${session.workoutTitle}
+      - Reps: ${session.completedReps} / ${session.targetReps}
+      - Accuracy: ${session.accuracy || 0}%
+      - Duration: ${formatDuration(session.duration)}
+      - Status: ${session.completed ? "Completed" : "Incomplete"}
+      Focus on form, effort, and tips for improvement. Respond as a friendly fitness coach in 2-3 sentences.
+    `;
+    if (session.collectedLandmarks && session.collectedLandmarks.length > 0) {
+      prompt += `
+        Also, analyze the user's movement using these pose landmarks (first 10 seconds): ${JSON.stringify(
+          session.collectedLandmarks
+        )}.
+        Comment on posture, range of motion, and any common mistakes you see in the landmark data.
+      `;
+    }
+
+    console.log(JSON.stringify(session.collectedLandmarks));
+
+    try {
+      const response = await fetch("/api/gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          systemPrompt:
+            "You are a certified fitness coach. Give concise, actionable feedback based on workout stats and pose landmark data.",
+          model: "gemini-2.0-flash-exp",
+          options: { temperature: 0.7, maxOutputTokens: 200 },
+        }),
+      });
+      if (!response.ok) throw new Error("AI feedback failed");
+      const result = await response.json();
+      setAiFeedback(result.response);
+
+      // Save AI summary for future use
+      // You may want to update the session in localStorage here:
+      // updateSession(session.id, { aiSummary: result.response });
+    } catch (err) {
+      setAiFeedback("AI feedback unavailable.");
+    }
+  };
+
+  // Fetch AI feedback when modal opens
+  useEffect(() => {
+    if (showFeedbackModal && selectedSession) {
+      setAiFeedback(""); // Reset
+      getAIFeedback(selectedSession);
+    }
+  }, [showFeedbackModal, selectedSession]);
+
   const getFeedbackMessage = (session) => {
     const accuracy = session.accuracy || 0;
-    const completionRate = session.targetReps > 0 ? (session.completedReps / session.targetReps) * 100 : 0;
-    
+    const completionRate =
+      session.targetReps > 0
+        ? (session.completedReps / session.targetReps) * 100
+        : 0;
+
     let feedback = [];
-    
+
     // Accuracy feedback
     if (accuracy >= 90) {
       feedback.push("🎯 Excellent form! Your accuracy is outstanding.");
     } else if (accuracy >= 75) {
       feedback.push("👍 Good form! Keep maintaining this consistency.");
     } else if (accuracy >= 60) {
-      feedback.push("📈 Room for improvement. Focus on proper form over speed.");
+      feedback.push(
+        "📈 Room for improvement. Focus on proper form over speed."
+      );
     } else {
-      feedback.push("💪 Take your time and focus on technique. Quality over quantity!");
+      feedback.push(
+        "💪 Take your time and focus on technique. Quality over quantity!"
+      );
     }
-    
+
     // Completion feedback
     if (completionRate >= 100) {
       feedback.push("✅ Workout completed! Great dedication.");
@@ -113,86 +195,112 @@ export default function SummaryPage() {
     } else {
       feedback.push("💯 Every rep counts! Keep building your endurance.");
     }
-    
+
     // Duration feedback
     const avgTimePerRep = session.duration / (session.completedReps || 1);
     if (avgTimePerRep < 2) {
-      feedback.push("⚡ Fast-paced workout! Make sure you're maintaining proper form.");
+      feedback.push(
+        "⚡ Fast-paced workout! Make sure you're maintaining proper form."
+      );
     } else if (avgTimePerRep > 5) {
-      feedback.push("🧘 Steady pace! Taking time for proper form is important.");
+      feedback.push(
+        "🧘 Steady pace! Taking time for proper form is important."
+      );
     }
-    
+
     return feedback;
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <NavBar />
-      
+
       {/* Feedback Modal */}
       {showFeedbackModal && selectedSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
           {/* Backdrop */}
-          <div 
+          <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setShowFeedbackModal(false)}
           />
-          
+
           {/* Modal */}
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-scaleIn max-h-[80vh] overflow-y-auto">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-scaleIn max-h-[80vh] overflow-y-auto w-[70vw] max-w-4xl">
             <button
               onClick={() => setShowFeedbackModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
             >
               <X className="w-5 h-5" />
             </button>
-            
+
             <div className="mb-6">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                 <MessageSquare className="w-6 h-6 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Workout Feedback</h3>
-              <p className="text-gray-600 font-medium">{selectedSession.workoutTitle}</p>
-              <p className="text-sm text-gray-500">{formatDate(selectedSession.timestamp)}</p>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Workout Feedback
+              </h3>
+              <p className="text-gray-600 font-medium">
+                {selectedSession.workoutTitle}
+              </p>
+              <p className="text-sm text-gray-500">
+                {formatDate(selectedSession.timestamp)}
+              </p>
             </div>
-            
+
             {/* Workout Summary */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Reps:</span>
-                  <span className="ml-2 font-semibold">{selectedSession.completedReps}/{selectedSession.targetReps}</span>
+                  <span className="ml-2 font-semibold">
+                    {selectedSession.completedReps}/{selectedSession.targetReps}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">Accuracy:</span>
-                  <span className="ml-2 font-semibold text-green-600">{selectedSession.accuracy || 0}%</span>
+                  <span className="ml-2 font-semibold text-green-600">
+                    {selectedSession.accuracy || 0}%
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">Duration:</span>
-                  <span className="ml-2 font-semibold">{formatDuration(selectedSession.duration)}</span>
+                  <span className="ml-2 font-semibold">
+                    {formatDuration(selectedSession.duration)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">Status:</span>
-                  <span className={`ml-2 font-semibold ${selectedSession.completed ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {selectedSession.completed ? 'Completed' : 'Incomplete'}
+                  <span
+                    className={`ml-2 font-semibold ${
+                      selectedSession.completed
+                        ? "text-green-600"
+                        : "text-yellow-600"
+                    }`}
+                  >
+                    {selectedSession.completed ? "Completed" : "Incomplete"}
                   </span>
                 </div>
               </div>
             </div>
-            
-            {/* Feedback Messages */}
+
+            {/* Gemini AI Feedback */}
             <div className="space-y-3 mb-6">
-              <h4 className="font-semibold text-gray-900">Personalized Feedback:</h4>
-              {getFeedbackMessage(selectedSession).map((message, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                  <div className="text-blue-600 text-sm leading-relaxed">{message}</div>
+              <h4 className="font-semibold text-gray-900">
+                Coach's Feedback (Gemini AI):
+              </h4>
+              <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                <div className="text-blue-600 text-sm leading-relaxed">
+                  {aiFeedback || "Analyzing..."}
                 </div>
-              ))}
+              </div>
             </div>
-            
+
             {/* Tips Section */}
             <div className="border-t pt-4">
-              <h4 className="font-semibold text-gray-900 mb-3">Tips for Next Time:</h4>
+              <h4 className="font-semibold text-gray-900 mb-3">
+                Tips for Next Time:
+              </h4>
               <ul className="text-sm text-gray-600 space-y-2">
                 <li>• Focus on consistent form throughout the workout</li>
                 <li>• Take breaks when needed to maintain accuracy</li>
@@ -200,7 +308,7 @@ export default function SummaryPage() {
                 <li>• Stay hydrated and maintain proper posture</li>
               </ul>
             </div>
-            
+
             <button
               onClick={() => setShowFeedbackModal(false)}
               className="w-full mt-6 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
