@@ -2,14 +2,31 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Camera, Play, Pause, RotateCcw, Target, Timer, TrendingUp, ArrowLeft } from 'lucide-react';
+import { Camera, Play, Pause, RotateCcw, Target, Timer, TrendingUp, ArrowLeft, Mic, MicOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import NavBar from '../components/NavBar';
+
+/** 4) Feature-detect the best audio MIME type for this browser */
+function pickAudioMime() {
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+    'audio/mp4', // Safari often ends up here
+  ];
+  for (const t of candidates) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(t)) return t;
+  }
+  return ''; // let browser decide
+}
 
 export default function TrainingPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const videoRef = useRef(null);
+
+  // Existing state
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentRep, setCurrentRep] = useState(0);
   const [accuracy, setAccuracy] = useState(0);
@@ -18,6 +35,14 @@ export default function TrainingPage() {
   const [currentWorkout, setCurrentWorkout] = useState(null);
   const [mediaStream, setMediaStream] = useState(null);
   const [liveFeedback, setLiveFeedback] = useState("Position yourself in front of the camera to begin");
+
+  // Speech-to-text state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [transcription, setTranscription] = useState('');
+  const [speechHistory, setSpeechHistory] = useState([]);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   // Workout data based on URL params
   const workouts = {
@@ -175,6 +200,137 @@ export default function TrainingPage() {
     return Math.min(100, (currentRep / currentWorkout.target) * 100);
   };
 
+  // Speech-to-Text Functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          sampleRate: 48000, // browsers commonly use 48k; server will downsample to 16k
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true
+        } 
+      });
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: pickAudioMime(),   // 4) feature-detected
+      });
+
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
+        await processAudioForSpeechToText(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+
+      // Auto-stop after 5 seconds
+      setTimeout(() => {
+        if (mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          setIsRecording(false);
+        }
+      }, 5000);
+
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      setLiveFeedback("Unable to access microphone. Please check permissions.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const processAudioForSpeechToText = async (audioBlob) => {
+    setIsProcessing(true);
+    
+    try {
+      const formData = new FormData();
+      // Use a sensible filename extension to help the server pick container
+      const ext = (audioBlob.type.includes('mp4') && 'm4a') ||
+                  (audioBlob.type.includes('ogg') && 'ogg') ||
+                  (audioBlob.type.includes('webm') && 'webm') || 'webm';
+      formData.append('audio', audioBlob, `recording.${ext}`);
+      
+      const response = await fetch('/api/speech-to-text', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to transcribe audio');
+      }
+      
+      const result = await response.json();
+      setTranscription(result.text);
+      
+      // Add to speech history
+      setSpeechHistory(prev => [...prev, { 
+        text: result.text, 
+        timestamp: new Date() 
+      }]);
+      
+      // Show in live feedback
+      setLiveFeedback(`You said: "${result.text}"`);
+      
+      // Clear transcription after 4 seconds
+      setTimeout(() => {
+        setTranscription('');
+        setLiveFeedback("Ready for your next question or command");
+      }, 4000);
+      
+    } catch (error) {
+      console.error('Error processing audio:', error);
+      setLiveFeedback("Speech recognition failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const toggleVoiceRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  // 5) Console helper to test the API with a known-good WAV in /public/sample.wav
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.testSpeechToText = async function () {
+        try {
+          const blob = await (await fetch('/sample.wav')).blob(); // put a small test wav in /public
+          const fd = new FormData();
+          fd.append('audio', blob, 'sample.wav');
+          console.log('Uploading /sample.wav to /api/speech-to-text…');
+          const res = await fetch('/api/speech-to-text', { method: 'POST', body: fd });
+          const data = await res.json();
+          console.log('API result:', data);
+          return data;
+        } catch (e) {
+          console.error('testSpeechToText failed:', e);
+        }
+      };
+      // Usage in console: testSpeechToText()
+    }
+  }, []);
+
   if (!currentWorkout) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -237,14 +393,51 @@ export default function TrainingPage() {
                   >
                     <RotateCcw className="w-6 h-6" />
                   </button>
+
+                  <button
+                    onClick={toggleVoiceRecording}
+                    className={`${
+                      isRecording 
+                        ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+                        : 'bg-purple-600 hover:bg-purple-700'
+                    } text-white p-3 rounded-full transition-all transform hover:scale-105 shadow-lg`}
+                    disabled={isProcessing}
+                  >
+                    {isRecording ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                  </button>
                 </div>
               </div>
+
+              {/* Voice Command Overlay */}
+              {(isRecording || isProcessing || transcription) && (
+                <div className="absolute top-6 left-6 right-6">
+                  <div className="bg-black/80 backdrop-blur-sm rounded-lg p-4 text-white">
+                    {isRecording && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                        <span className="text-sm">Listening... (5s max)</span>
+                      </div>
+                    )}
+                    {isProcessing && !isRecording && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span className="text-sm">Converting speech to text...</span>
+                      </div>
+                    )}
+                    {transcription && (
+                      <div className="text-sm">
+                        <strong>You said:</strong> "{transcription}"
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Workout Panel - Right Side */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl p-6 h-full shadow-xl border border-gray-100">
+            <div className="bg-white rounded-2xl p-6 h-full shadow-xl border border-gray-100 overflow-y-auto">
               {/* Back Button */}
               <div className="mb-4">
                 <button
@@ -262,79 +455,98 @@ export default function TrainingPage() {
                 <p className="text-gray-600 text-sm">{currentWorkout.description}</p>
               </div>
 
+              {/* Progress Stats */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-semibold text-blue-900">Reps</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-800">
+                    {currentRep}/{currentWorkout.target}
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${getProgressPercentage()}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-5 h-5 text-green-600" />
+                    <span className="text-sm font-semibold text-green-900">Accuracy</span>
+                  </div>
+                  <div className={`text-2xl font-bold ${getAccuracyColor(accuracy)}`}>
+                    {Math.round(accuracy)}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Timer */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Timer className="w-5 h-5 text-orange-600" />
+                  <span className="text-sm font-semibold text-orange-900">Workout Time</span>
+                </div>
+                <div className="text-3xl font-bold text-orange-800">
+                  {formatTime(elapsedTime)}
+                </div>
+                <div className="text-xs text-orange-600 mt-1">
+                  Target: {formatTime(currentWorkout.duration)}
+                </div>
+              </div>
+
               {/* Live Feedback */}
               <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
                 <h3 className="text-sm font-semibold text-blue-900 mb-2">Live Feedback</h3>
                 <p className="text-sm text-blue-800 leading-relaxed">{liveFeedback}</p>
               </div>
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-100">
-                  <Target className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-blue-900">{currentRep}</div>
-                  <div className="text-sm text-blue-700">of {currentWorkout.target}</div>
-                </div>
-
-                <div className="bg-green-50 rounded-xl p-4 text-center border border-green-100">
-                  <TrendingUp className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                  <div className={`text-2xl font-bold ${getAccuracyColor(accuracy)}`}>
-                    {Math.round(accuracy)}%
-                  </div>
-                  <div className="text-sm text-green-700">Accuracy</div>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="mb-6">
-                <div className="flex justify-between text-sm text-gray-600 mb-2">
-                  <span>Progress</span>
-                  <span>{Math.round(getProgressPercentage())}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${getProgressPercentage()}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* Timer */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <div className="flex items-center justify-center">
-                  <Timer className="w-5 h-5 text-gray-600 mr-2" />
-                  <span className="text-xl font-mono font-semibold text-gray-900">
-                    {formatTime(elapsedTime)}
-                  </span>
-                </div>
-                <div className="text-center text-sm text-gray-500 mt-1">
-                  Target: {formatTime(currentWorkout.duration)}
-                </div>
-              </div>
-
-              {/* Status */}
-              <div className="text-center">
-                <div
-                  className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
-                    isPlaying
-                      ? "bg-green-100 text-green-800 border border-green-200"
-                      : "bg-gray-100 text-gray-600 border border-gray-200"
-                  }`}
-                >
-                  <div
-                    className={`w-2 h-2 rounded-full mr-2 ${
-                      isPlaying ? "bg-green-500" : "bg-gray-400"
+              {/* Speech-to-Text Section */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-purple-900">Speech Recognition</h3>
+                  <button
+                    onClick={toggleVoiceRecording}
+                    className={`p-2 rounded-lg transition-all ${
+                      isRecording 
+                        ? 'bg-red-100 text-red-600 animate-pulse' 
+                        : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
                     }`}
-                  ></div>
-                  {isPlaying ? "Workout Active" : "Ready to Start"}
+                    disabled={isProcessing}
+                  >
+                    {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </button>
+                </div>
+                
+                {isProcessing && (
+                  <p className="text-xs text-purple-600 mb-2">Converting speech to text...</p>
+                )}
+                
+                {transcription && (
+                  <div className="text-xs text-purple-700 mb-2 p-2 bg-purple-100 rounded">
+                    <strong>Transcribed:</strong> "{transcription}"
+                  </div>
+                )}
+                
+                <div className="text-xs text-purple-600">
+                  <p>Click the microphone to speak (5 second limit)</p>
                 </div>
               </div>
 
-              {/* Completion Message */}
-              {currentRep >= currentWorkout.target && (
-                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl text-center">
-                  <div className="text-green-800 font-semibold">🎉 Great Job!</div>
-                  <div className="text-green-600 text-sm mt-1">You completed all reps!</div>
+              {/* Speech History */}
+              {speechHistory.length > 0 && (
+                <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Recent Speech</h3>
+                  <div className="space-y-1 max-h-24 overflow-y-auto">
+                    {speechHistory.slice(-3).reverse().map((speech, index) => (
+                      <div key={index} className="text-xs text-gray-600 p-1">
+                        "{speech.text}" - {speech.timestamp.toLocaleTimeString()}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
