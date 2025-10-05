@@ -15,7 +15,7 @@ export async function POST(request) {
         }
 
         const body = await request.json();
-        const { prompt, systemPrompt, model = 'gemini-2.5-flash', options = {} } = body;
+        const { prompt, systemPrompt, model = 'gemini-2.5-flash-lite', options = {} } = body;
 
         // Validate prompt
         if (!prompt || typeof prompt !== 'string') {

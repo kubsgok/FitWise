@@ -47,6 +47,7 @@ export default function TrainingPage() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioRef = useRef(null);
+  const timerRef = useRef(null);
 
   // Live feedback tracking state
   const [lastFeedbackTime, setLastFeedbackTime] = useState(0);
@@ -56,6 +57,9 @@ export default function TrainingPage() {
   const [hasGivenEncouragement, setHasGivenEncouragement] = useState(false);
   const [hasGivenFormCorrection, setHasGivenFormCorrection] = useState(false);
   const feedbackCooldown = useRef(0); // Prevents too frequent feedback
+  const [recentFeedbackMessages, setRecentFeedbackMessages] = useState([]); // Track recent messages
+  const [formIssueCount, setFormIssueCount] = useState(0); // Track consecutive form issues
+  const [lastFormMessage, setLastFormMessage] = useState(''); // Track CV feedback messages
 
   // Workout data based on URL params
   const workouts = {
@@ -157,6 +161,29 @@ export default function TrainingPage() {
   };
 }, [searchParams, cameraActive]);
 
+  // Timer effect - starts/stops based on isPlaying state
+  useEffect(() => {
+    if (isPlaying && cameraActive) {
+      // Start the timer
+      timerRef.current = setInterval(() => {
+        setElapsedTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      // Stop the timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isPlaying, cameraActive]);
 
   useEffect(() => {
     if (cameraActive) {
@@ -171,6 +198,11 @@ export default function TrainingPage() {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
+      }
+      // Cleanup timer if component unmounts
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
   }, [cameraActive]);
@@ -220,6 +252,12 @@ export default function TrainingPage() {
     setElapsedTime(0);
     setCameraActive(false);
     
+    // Clear timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
     // Reset live feedback tracking
     setWorkoutStartTime(null);
     setLastFeedbackTime(0);
@@ -227,6 +265,9 @@ export default function TrainingPage() {
     setLastAccuracy(0);
     setHasGivenEncouragement(false);
     setHasGivenFormCorrection(false);
+    setRecentFeedbackMessages([]);
+    setFormIssueCount(0);
+    setLastFormMessage('');
     feedbackCooldown.current = 0;
   };
 
@@ -347,8 +388,8 @@ export default function TrainingPage() {
   const checkForLiveFeedback = (newReps, newAccuracy, formMessage) => {
     const now = Date.now();
     
-    // Prevent feedback spam (minimum 15 seconds between AI feedback)
-    if (now - feedbackCooldown.current < 15000) return;
+    // Prevent feedback spam (minimum 25 seconds between AI feedback)
+    if (now - feedbackCooldown.current < 25000) return;
     
     // Skip if AI is already processing or speaking
     if (isAIProcessing || isSpeaking || isRecording) return;
@@ -356,11 +397,23 @@ export default function TrainingPage() {
     let shouldGiveFeedback = false;
     let feedbackType = '';
     
-    // 1. Form correction feedback (low accuracy)
-    if (newAccuracy < 60 && !hasGivenFormCorrection && newReps > 2) {
-      shouldGiveFeedback = true;
-      feedbackType = 'form_correction';
-      setHasGivenFormCorrection(true);
+    // Track form message changes
+    const formMessageChanged = formMessage !== lastFormMessage && formMessage && formMessage.length > 0;
+    
+    // 1. Form correction feedback (low accuracy OR new form message)
+    if ((newAccuracy < 50 || formMessageChanged) && newReps > 2) { // Stricter conditions
+      // Check if we've given too many form corrections recently
+      const recentFormCorrections = recentFeedbackMessages.filter(
+        msg => msg.type === 'form_correction' && (now - msg.timestamp) < 60000 // within 1 minute
+      ).length;
+      
+      if (recentFormCorrections < 1) { // Max 1 form correction per minute
+        shouldGiveFeedback = true;
+        feedbackType = 'form_correction';
+        if (formMessageChanged) {
+          setFormIssueCount(prev => prev + 1);
+        }
+      }
     }
     
     // 2. Progress encouragement (halfway point)
@@ -370,20 +423,46 @@ export default function TrainingPage() {
       setHasGivenEncouragement(true);
     }
     
-    // 3. Rep milestone celebration (every 5 reps for longer workouts)
-    else if (currentWorkout && currentWorkout.target > 10 && newReps > 0 && newReps % 5 === 0 && newReps !== lastRepCount) {
-      shouldGiveFeedback = true;
-      feedbackType = 'milestone_celebration';
+    // 3. Rep milestone celebration (only at 50% and completion)
+    else if (currentWorkout && newReps > 0 && newReps !== lastRepCount) {
+      const shouldCelebrate = 
+        (newReps === Math.floor(currentWorkout.target * 0.5)) || // Halfway point only
+        (newReps === Math.floor(currentWorkout.target * 0.75)); // 75% completion only
+      
+      if (shouldCelebrate) {
+        const recentMilestones = recentFeedbackMessages.filter(
+          msg => msg.type === 'milestone_celebration' && (now - msg.timestamp) < 45000 // within 45 seconds
+        ).length;
+        
+        if (recentMilestones === 0) {
+          shouldGiveFeedback = true;
+          feedbackType = 'milestone_celebration';
+        }
+      }
     }
     
-    // 4. Workout completion
-    else if (currentWorkout && newReps >= currentWorkout.target && lastRepCount < currentWorkout.target) {
+    // 4. Workout completion - PRIORITY FEEDBACK (bypasses cooldowns)
+    if (currentWorkout && newReps >= currentWorkout.target && lastRepCount < currentWorkout.target) {
+      // Reset cooldown to ensure completion message always plays
+      feedbackCooldown.current = 0;
       shouldGiveFeedback = true;
       feedbackType = 'workout_complete';
     }
     
-    // 5. Time-based encouragement (every 2 minutes)
-    else if (elapsedTime > 0 && elapsedTime % 120 === 0 && elapsedTime !== lastFeedbackTime) {
+    // 5. Positive reinforcement (when form is good and no recent feedback) - VERY RARE
+    else if (newAccuracy >= 90 && newReps > 4 && (now - feedbackCooldown.current) > 45000) { // 45 seconds minimum, very high accuracy
+      const recentPositive = recentFeedbackMessages.filter(
+        msg => msg.type === 'positive_reinforcement' && (now - msg.timestamp) < 90000 // within 1.5 minutes
+      ).length;
+      
+      if (recentPositive === 0) {
+        shouldGiveFeedback = true;
+        feedbackType = 'positive_reinforcement';
+      }
+    }
+    
+    // 6. Time-based encouragement (only once at 90 seconds)
+    else if (elapsedTime === 90 && elapsedTime !== lastFeedbackTime) {
       shouldGiveFeedback = true;
       feedbackType = 'time_encouragement';
       setLastFeedbackTime(elapsedTime);
@@ -391,37 +470,46 @@ export default function TrainingPage() {
     
     if (shouldGiveFeedback) {
       feedbackCooldown.current = now;
-      provideLiveFeedback(feedbackType, newReps, newAccuracy);
+      provideLiveFeedback(feedbackType, newReps, newAccuracy, formMessage);
     }
     
     // Update tracking variables
     setLastRepCount(newReps);
     setLastAccuracy(newAccuracy);
+    setLastFormMessage(formMessage || '');
   };
   
   // **NEW: Provide contextual live feedback**
-  const provideLiveFeedback = async (feedbackType, reps, currentAccuracy) => {
+  const provideLiveFeedback = async (feedbackType, reps, currentAccuracy, formMessage) => {
     let feedbackPrompt = '';
+    
+    // Get recent feedback for context
+    const recentMessages = recentFeedbackMessages.slice(-3).map(msg => msg.content).join('; ');
+    const avoidRepetition = recentMessages ? `Avoid repeating these recent messages: "${recentMessages}". ` : '';
     
     switch (feedbackType) {
       case 'form_correction':
-        feedbackPrompt = `The user's form accuracy is low (${currentAccuracy}%) during ${currentWorkout?.title}. Give a quick form correction tip in 1 sentence as their coach.`;
+        feedbackPrompt = `Give a brief, natural form correction for ${currentWorkout?.title}. Say it like a real trainer would - one conversational sentence only.`;
         break;
         
       case 'halfway_encouragement':
-        feedbackPrompt = `The user is halfway through their ${currentWorkout?.title} set (${reps}/${currentWorkout?.target} reps). Give motivational encouragement in 1 sentence.`;
+        feedbackPrompt = `The user is halfway through their ${currentWorkout?.title} workout. Give one natural sentence of encouragement like a real trainer would.`;
         break;
         
       case 'milestone_celebration':
-        feedbackPrompt = `The user just hit ${reps} reps of ${currentWorkout?.title}. Give a quick celebration and motivation to keep going in 1 sentence.`;
+        feedbackPrompt = `The user hit ${reps} out of ${currentWorkout?.target} reps for ${currentWorkout?.title}. Give one natural sentence of celebration.`;
         break;
         
       case 'workout_complete':
-        feedbackPrompt = `The user just completed their ${currentWorkout?.title} workout (${currentWorkout?.target} reps)! Celebrate their achievement in 1 enthusiastic sentence.`;
+        feedbackPrompt = `The user just completed all ${currentWorkout?.target} reps of ${currentWorkout?.title}! Give one enthusiastic congratulatory sentence celebrating their achievement. Be excited and proud of them finishing the workout.`;
+        break;
+        
+      case 'positive_reinforcement':
+        feedbackPrompt = `The user is doing great with ${currentWorkout?.title}. Give one natural sentence of positive reinforcement.`;
         break;
         
       case 'time_encouragement':
-        feedbackPrompt = `The user has been working out for ${Math.floor(elapsedTime/60)} minutes doing ${currentWorkout?.title}. Give time-based motivation in 1 sentence.`;
+        feedbackPrompt = `The user has been working out for 90 seconds. Give one sentence of time-based encouragement.`;
         break;
     }
     
@@ -429,7 +517,7 @@ export default function TrainingPage() {
       try {
         setIsAIProcessing(true);
         
-        const systemPrompt = `You are Coach Mike, a motivational male fitness trainer. Give very brief (1 sentence), encouraging live feedback during workouts. Use phrases like "Let's go!", "You got this!", "Keep it up!", "Beast mode!", "Nice work!", "Stay strong!". Be enthusiastic but concise since this is live coaching during exercise.`;
+        const systemPrompt = `You are Coach Mike, a motivational male fitness trainer. Give exactly ONE brief sentence of natural encouragement. Do NOT use any formatting like asterisks, bullets, or multiple phrases. Do NOT include words like "Workout Commences" or stage directions. Just give one natural, conversational sentence like a real trainer would say. Examples: "Nice form on that rep!" or "Keep that energy up!" or "You're crushing it!" Be natural and conversational, not scripted.`;
         
         const response = await fetch('/api/gemini', {
           method: 'POST',
@@ -439,14 +527,27 @@ export default function TrainingPage() {
             systemPrompt: systemPrompt,
             model: 'gemini-2.0-flash-exp',
             options: {
-              temperature: 0.8,
-              maxOutputTokens: 50, // Very short responses
+              temperature: 0.9, // Higher temperature for more variation
+              maxOutputTokens: 50,
             }
           }),
         });
         
         if (response.ok) {
           const aiResult = await response.json();
+          
+          // Track this message to avoid repetition
+          const newMessage = {
+            type: feedbackType,
+            content: aiResult.response,
+            timestamp: Date.now()
+          };
+          
+          setRecentFeedbackMessages(prev => {
+            const updated = [...prev, newMessage];
+            // Keep only last 10 messages
+            return updated.slice(-10);
+          });
           
           // Add to speech history with live feedback indicator
           setSpeechHistory(prev => [...prev, { 
