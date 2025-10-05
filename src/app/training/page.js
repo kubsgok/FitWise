@@ -112,7 +112,7 @@ export default function TrainingPage() {
 
   // listener
   const handleLandmark = (data) => {
-    //console.log("📡 Landmark data:", data);
+    console.log("📡 Landmark data:", data);
     setCurrentRep(JSON.parse(data).reps);
     let message = JSON.parse(data).message;
     if (message && message.length > 0) {

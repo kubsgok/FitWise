@@ -165,6 +165,6 @@ def getRepsFromWorkoutId(landmarks, image_width, image_height, workoutId):
                           down_threshold=90, up_threshold=160, cooldown=0.5)
     elif workoutId == '3':  # Squats
         return count_reps(landmarks, image_width, image_height, workoutId,
-                          down_threshold=110, up_threshold=160, cooldown=0.5)
+                          down_threshold=90, up_threshold=160, cooldown=0.5)
     else:
         return 0, None
