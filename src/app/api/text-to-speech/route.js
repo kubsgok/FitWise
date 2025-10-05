@@ -2,7 +2,16 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    const { text, voiceId = 'EXAVITQu4vr4xnSDxMaL' } = await request.json();
+    const { 
+      text, 
+      voiceId = 'IKne3meq5aSn9XLyUdCD', // Custom fitness coach voice
+      voiceSettings = {
+        stability: 0.7,
+        similarity_boost: 0.8,
+        style: 0.2,
+        use_speaker_boost: true
+      }
+    } = await request.json();
 
     if (!text) {
       return NextResponse.json(
@@ -30,11 +39,8 @@ export async function POST(request) {
         },
         body: JSON.stringify({
           text: text,
-          model_id: 'eleven_monolingual_v1',
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5,
-          },
+          model_id: 'eleven_multilingual_v2', // Better model for natural speech
+          voice_settings: voiceSettings,
         }),
       }
     );

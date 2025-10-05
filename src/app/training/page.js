@@ -40,10 +40,13 @@ export default function TrainingPage() {
   // Speech-to-text state
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcription, setTranscription] = useState('');
   const [speechHistory, setSpeechHistory] = useState([]);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const audioRef = useRef(null);
 
   // Workout data based on URL params
   const workouts = {
@@ -145,6 +148,11 @@ export default function TrainingPage() {
 
     return () => {
       stopCamera();
+      // Cleanup audio if component unmounts
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, [cameraActive]);
 
@@ -290,14 +298,8 @@ export default function TrainingPage() {
         timestamp: new Date() 
       }]);
       
-      // Show in live feedback
-      setLiveFeedback(`You said: "${result.text}"`);
-      
-      // Clear transcription after 4 seconds
-      setTimeout(() => {
-        setTranscription('');
-        setLiveFeedback("Ready for your next question or command");
-      }, 4000);
+      // **NEW: Call Gemini API with the transcribed text**
+      await processWithGeminiAPI(result.text);
       
     } catch (error) {
       console.error('Error processing audio:', error);
@@ -307,7 +309,150 @@ export default function TrainingPage() {
     }
   };
 
+  // **NEW: Function to convert text to speech**
+  const speakText = async (text) => {
+    try {
+      setIsSpeaking(true);
+      
+      const response = await fetch('/api/text-to-speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          text,
+          voiceId: 'IKne3meq5aSn9XLyUdCD', // Custom fitness coach voice
+          voiceSettings: {
+            stability: 0.7, // More stable for coaching
+            similarity_boost: 0.8, // Higher similarity for consistency
+            style: 0.2, // Slight style enhancement
+            use_speaker_boost: true // Enhance vocal presence
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate speech');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Create and play audio
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      audio.onerror = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      await audio.play();
+      
+    } catch (error) {
+      console.error('Error in text-to-speech:', error);
+      setIsSpeaking(false);
+    }
+  };
+
+  // **NEW: Function to process speech with Gemini API**
+  const processWithGeminiAPI = async (transcribedText) => {
+    try {
+      setIsAIProcessing(true);
+      setLiveFeedback("🤖 AI is analyzing your request...");
+      
+      // Create a fitness-focused system prompt
+      const systemPrompt = `You are Coach Mike, a motivational male fitness trainer and bodybuilder with 15+ years of experience. You have a deep, encouraging voice and speak like a supportive gym coach. The user is currently doing a ${currentWorkout?.title} workout.
+      
+      Your personality:
+      - Strong, motivational, and encouraging like a bodybuilder coach
+      - Use phrases like "Let's go!", "You got this!", "Beast mode!", "Keep pushing!"
+      - Be supportive but firm, like a personal trainer who believes in their client
+      - Keep responses concise (1-2 sentences max) but impactful
+      - Focus on proper form, motivation, and pushing through challenges
+      
+      Current workout: ${currentWorkout?.title}
+      Current reps: ${currentRep}/${currentWorkout?.target}
+      Workout description: ${currentWorkout?.description}
+      
+      Respond as Coach Mike would - motivational, masculine, and focused on helping them crush their workout!`;
+
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: transcribedText,
+          systemPrompt: systemPrompt,
+          model: 'gemini-2.0-flash-exp',
+          options: {
+            temperature: 0.7,
+            maxOutputTokens: 150, // Keep responses short
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const aiResult = await response.json();
+      
+      // Display AI response in live feedback
+      setLiveFeedback(`AI: ${aiResult.response}`);
+      
+      // Add AI response to speech history
+      setSpeechHistory(prev => [...prev, { 
+        text: `AI: ${aiResult.response}`, 
+        timestamp: new Date(),
+        isAI: true
+      }]);
+      
+      // **NEW: Convert AI response to speech**
+      await speakText(aiResult.response);
+      
+      // Clear the AI response after 8 seconds to show normal feedback
+      setTimeout(() => {
+        setLiveFeedback("Ready for your next question or command");
+      }, 8000);
+      
+    } catch (error) {
+      console.error('Error calling Gemini API:', error);
+      setLiveFeedback("AI assistant is temporarily unavailable. Continue your workout!");
+      
+      // Show user's original message
+      setTimeout(() => {
+        setLiveFeedback(`You said: "${transcribedText}"`);
+        setTimeout(() => {
+          setTranscription('');
+          setLiveFeedback("Ready for your next question or command");
+        }, 4000);
+      }, 2000);
+    } finally {
+      setIsAIProcessing(false);
+    }
+  };
+
+  const stopSpeaking = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsSpeaking(false);
+    }
+  };
+
   const toggleVoiceRecording = () => {
+    // Stop any current AI speech before recording
+    if (isSpeaking) {
+      stopSpeaking();
+    }
+    
     if (isRecording) {
       stopRecording();
     } else {
@@ -414,7 +559,7 @@ export default function TrainingPage() {
               </div>
 
               {/* Voice Command Overlay */}
-              {(isRecording || isProcessing || transcription) && (
+              {(isRecording || isProcessing || isAIProcessing || transcription) && (
                 <div className="absolute top-6 left-6 right-6">
                   <div className="bg-black/80 backdrop-blur-sm rounded-lg p-4 text-white">
                     {isRecording && (
@@ -427,6 +572,18 @@ export default function TrainingPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                         <span className="text-sm">Converting speech to text...</span>
+                      </div>
+                    )}
+                    {isAIProcessing && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="animate-pulse text-blue-400">🤖</div>
+                        <span className="text-sm">AI is thinking...</span>
+                      </div>
+                    )}
+                    {isSpeaking && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="animate-bounce text-green-400">🔊</div>
+                        <span className="text-sm">AI is speaking...</span>
                       </div>
                     )}
                     {transcription && (
@@ -512,7 +669,7 @@ export default function TrainingPage() {
               {/* Speech-to-Text Section */}
               <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-purple-900">Speech Recognition</h3>
+                  <h3 className="text-sm font-semibold text-purple-900">AI Voice Assistant</h3>
                   <button
                     onClick={toggleVoiceRecording}
                     className={`p-2 rounded-lg transition-all ${
@@ -520,14 +677,22 @@ export default function TrainingPage() {
                         ? 'bg-red-100 text-red-600 animate-pulse' 
                         : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
                     }`}
-                    disabled={isProcessing}
+                    disabled={isProcessing || isAIProcessing}
                   >
                     {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </button>
                 </div>
                 
                 {isProcessing && (
-                  <p className="text-xs text-purple-600 mb-2">Converting speech to text...</p>
+                  <p className="text-xs text-purple-600 mb-2">🎤 Converting speech to text...</p>
+                )}
+                
+                {isAIProcessing && (
+                  <p className="text-xs text-blue-600 mb-2">🤖 AI is thinking...</p>
+                )}
+                
+                {isSpeaking && (
+                  <p className="text-xs text-green-600 mb-2">🔊 AI is speaking...</p>
                 )}
                 
                 {transcription && (
@@ -537,7 +702,8 @@ export default function TrainingPage() {
                 )}
                 
                 <div className="text-xs text-purple-600">
-                  <p>Click the microphone to speak (5 second limit)</p>
+                  <p>Click the microphone to speak with your AI trainer (5 sec limit)</p>
+                  <p className="text-purple-500 mt-1">💬 Ask about form, get motivation, or request tips!</p>
                 </div>
               </div>
 
@@ -545,10 +711,20 @@ export default function TrainingPage() {
               {speechHistory.length > 0 && (
                 <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-900 mb-2">Recent Speech</h3>
-                  <div className="space-y-1 max-h-24 overflow-y-auto">
-                    {speechHistory.slice(-3).reverse().map((speech, index) => (
-                      <div key={index} className="text-xs text-gray-600 p-1">
-                        "{speech.text}" - {speech.timestamp.toLocaleTimeString()}
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {speechHistory.slice(-4).reverse().map((speech, index) => (
+                      <div 
+                        key={index} 
+                        className={`text-xs p-2 rounded ${
+                          speech.isAI 
+                            ? 'bg-blue-100 text-blue-800 border-l-2 border-blue-400' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        <div className="font-medium">{speech.text}</div>
+                        <div className="text-xs opacity-70 mt-1">
+                          {speech.timestamp.toLocaleTimeString()}
+                        </div>
                       </div>
                     ))}
                   </div>
