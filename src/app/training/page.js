@@ -48,6 +48,15 @@ export default function TrainingPage() {
   const audioChunksRef = useRef([]);
   const audioRef = useRef(null);
 
+  // Live feedback tracking state
+  const [lastFeedbackTime, setLastFeedbackTime] = useState(0);
+  const [lastRepCount, setLastRepCount] = useState(0);
+  const [lastAccuracy, setLastAccuracy] = useState(0);
+  const [workoutStartTime, setWorkoutStartTime] = useState(null);
+  const [hasGivenEncouragement, setHasGivenEncouragement] = useState(false);
+  const [hasGivenFormCorrection, setHasGivenFormCorrection] = useState(false);
+  const feedbackCooldown = useRef(0); // Prevents too frequent feedback
+
   // Workout data based on URL params
   const workouts = {
     // Arms
@@ -112,12 +121,22 @@ export default function TrainingPage() {
 
   // listener
   const handleLandmark = (data) => {
-    console.log("📡 Landmark data:", data);
-    setCurrentRep(JSON.parse(data).reps);
-    let message = JSON.parse(data).message;
+    //console.log("📡 Landmark data:", data);
+    const parsedData = JSON.parse(data);
+    const newReps = parsedData.reps;
+    const newAccuracy = parsedData.accuracy || accuracy; // Use existing if not provided
+    
+    setCurrentRep(newReps);
+    setAccuracy(newAccuracy);
+    
+    let message = parsedData.message;
     if (message && message.length > 0) {
       setLiveFeedback(message);
     }
+    
+    // **NEW: Trigger intelligent live feedback**
+    checkForLiveFeedback(newReps, newAccuracy, message);
+    
     // console.log("💡 Feedback message:", message);
   };
   socket.on("landmark", handleLandmark);
@@ -185,6 +204,12 @@ export default function TrainingPage() {
     if (!cameraActive) {
       setCameraActive(true);
     }
+    
+    // Track workout start time for feedback system
+    if (!isPlaying && !workoutStartTime) {
+      setWorkoutStartTime(Date.now());
+    }
+    
     setIsPlaying(!isPlaying);
   };
 
@@ -194,6 +219,15 @@ export default function TrainingPage() {
     setAccuracy(0);
     setElapsedTime(0);
     setCameraActive(false);
+    
+    // Reset live feedback tracking
+    setWorkoutStartTime(null);
+    setLastFeedbackTime(0);
+    setLastRepCount(0);
+    setLastAccuracy(0);
+    setHasGivenEncouragement(false);
+    setHasGivenFormCorrection(false);
+    feedbackCooldown.current = 0;
   };
 
   const formatTime = (seconds) => {
@@ -306,6 +340,130 @@ export default function TrainingPage() {
       setLiveFeedback("Speech recognition failed. Please try again.");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // **NEW: Intelligent live feedback system**
+  const checkForLiveFeedback = (newReps, newAccuracy, formMessage) => {
+    const now = Date.now();
+    
+    // Prevent feedback spam (minimum 15 seconds between AI feedback)
+    if (now - feedbackCooldown.current < 15000) return;
+    
+    // Skip if AI is already processing or speaking
+    if (isAIProcessing || isSpeaking || isRecording) return;
+    
+    let shouldGiveFeedback = false;
+    let feedbackType = '';
+    
+    // 1. Form correction feedback (low accuracy)
+    if (newAccuracy < 60 && !hasGivenFormCorrection && newReps > 2) {
+      shouldGiveFeedback = true;
+      feedbackType = 'form_correction';
+      setHasGivenFormCorrection(true);
+    }
+    
+    // 2. Progress encouragement (halfway point)
+    else if (currentWorkout && newReps >= Math.floor(currentWorkout.target / 2) && !hasGivenEncouragement) {
+      shouldGiveFeedback = true;
+      feedbackType = 'halfway_encouragement';
+      setHasGivenEncouragement(true);
+    }
+    
+    // 3. Rep milestone celebration (every 5 reps for longer workouts)
+    else if (currentWorkout && currentWorkout.target > 10 && newReps > 0 && newReps % 5 === 0 && newReps !== lastRepCount) {
+      shouldGiveFeedback = true;
+      feedbackType = 'milestone_celebration';
+    }
+    
+    // 4. Workout completion
+    else if (currentWorkout && newReps >= currentWorkout.target && lastRepCount < currentWorkout.target) {
+      shouldGiveFeedback = true;
+      feedbackType = 'workout_complete';
+    }
+    
+    // 5. Time-based encouragement (every 2 minutes)
+    else if (elapsedTime > 0 && elapsedTime % 120 === 0 && elapsedTime !== lastFeedbackTime) {
+      shouldGiveFeedback = true;
+      feedbackType = 'time_encouragement';
+      setLastFeedbackTime(elapsedTime);
+    }
+    
+    if (shouldGiveFeedback) {
+      feedbackCooldown.current = now;
+      provideLiveFeedback(feedbackType, newReps, newAccuracy);
+    }
+    
+    // Update tracking variables
+    setLastRepCount(newReps);
+    setLastAccuracy(newAccuracy);
+  };
+  
+  // **NEW: Provide contextual live feedback**
+  const provideLiveFeedback = async (feedbackType, reps, currentAccuracy) => {
+    let feedbackPrompt = '';
+    
+    switch (feedbackType) {
+      case 'form_correction':
+        feedbackPrompt = `The user's form accuracy is low (${currentAccuracy}%) during ${currentWorkout?.title}. Give a quick form correction tip in 1 sentence as their coach.`;
+        break;
+        
+      case 'halfway_encouragement':
+        feedbackPrompt = `The user is halfway through their ${currentWorkout?.title} set (${reps}/${currentWorkout?.target} reps). Give motivational encouragement in 1 sentence.`;
+        break;
+        
+      case 'milestone_celebration':
+        feedbackPrompt = `The user just hit ${reps} reps of ${currentWorkout?.title}. Give a quick celebration and motivation to keep going in 1 sentence.`;
+        break;
+        
+      case 'workout_complete':
+        feedbackPrompt = `The user just completed their ${currentWorkout?.title} workout (${currentWorkout?.target} reps)! Celebrate their achievement in 1 enthusiastic sentence.`;
+        break;
+        
+      case 'time_encouragement':
+        feedbackPrompt = `The user has been working out for ${Math.floor(elapsedTime/60)} minutes doing ${currentWorkout?.title}. Give time-based motivation in 1 sentence.`;
+        break;
+    }
+    
+    if (feedbackPrompt) {
+      try {
+        setIsAIProcessing(true);
+        
+        const systemPrompt = `You are Coach Mike, a motivational male fitness trainer. Give very brief (1 sentence), encouraging live feedback during workouts. Use phrases like "Let's go!", "You got this!", "Keep it up!", "Beast mode!", "Nice work!", "Stay strong!". Be enthusiastic but concise since this is live coaching during exercise.`;
+        
+        const response = await fetch('/api/gemini', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: feedbackPrompt,
+            systemPrompt: systemPrompt,
+            model: 'gemini-2.0-flash-exp',
+            options: {
+              temperature: 0.8,
+              maxOutputTokens: 50, // Very short responses
+            }
+          }),
+        });
+        
+        if (response.ok) {
+          const aiResult = await response.json();
+          
+          // Add to speech history with live feedback indicator
+          setSpeechHistory(prev => [...prev, { 
+            text: `🔴 Live: ${aiResult.response}`, 
+            timestamp: new Date(),
+            isAI: true,
+            isLive: true
+          }]);
+          
+          // Speak the feedback
+          await speakText(aiResult.response);
+        }
+      } catch (error) {
+        console.error('Live feedback error:', error);
+      } finally {
+        setIsAIProcessing(false);
+      }
     }
   };
 
@@ -716,7 +874,9 @@ export default function TrainingPage() {
                       <div 
                         key={index} 
                         className={`text-xs p-2 rounded ${
-                          speech.isAI 
+                          speech.isLive
+                            ? 'bg-red-100 text-red-800 border-l-2 border-red-400'
+                            : speech.isAI 
                             ? 'bg-blue-100 text-blue-800 border-l-2 border-blue-400' 
                             : 'bg-gray-100 text-gray-600'
                         }`}
